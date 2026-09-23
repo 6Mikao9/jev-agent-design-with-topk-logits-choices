@@ -29,6 +29,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - [备选研究路线](docs/OPTIONAL_IDEAS.zh-CN.md)：记录 I1—I6 的采纳状态；I4、I5、I6 保留为备选方案。
 - [Optional research directions](docs/OPTIONAL_IDEAS.en.md)：英文版研究路线和状态。
 - [GitHub 发布说明](docs/PUBLISHING.zh-CN.md)：如何公开这个文档包并保留清晰的版本记录。
+- [面向 Jev 的分层页表记忆](docs/JEV_MEMORY_PAGING.zh-CN.md)：两阶段页表选择、摘要、LRU/RAG 组合与评测计划。
 
 ## 核心设想
 
