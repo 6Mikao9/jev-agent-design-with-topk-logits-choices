@@ -1,6 +1,7 @@
 """Jev-native tool-agent research prototype."""
 
 from .agent import Agent, AgentResult, ToolDefinition
+from .context_residency import ContextBlock, ContextCandidate, ContextFault, ContextResidencyManager
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
 from .memory import DependencyIndex, MemoryBank, MemoryRecord
@@ -29,6 +30,10 @@ from .virtual_option import (
 __all__ = [
     "Agent",
     "AgentResult",
+    "ContextBlock",
+    "ContextCandidate",
+    "ContextFault",
+    "ContextResidencyManager",
     "DiffusionCandidate",
     "FastLogitsHelper",
     "FastLogitsState",
