@@ -151,11 +151,21 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 新增 `benchmarks/benchmark_recovery_gate_matrix.py`，在不调用网络或真实 Jev 的控制实验中，将 files、calendar、database、browser 四个页分别置于 `empty`、`wrong_page`、`stale`、`correct_resident` 四种状态，共 16 cases。gate 在 12 个非正确 resident case 中全部阻断非法工具解析；stale 页先刷新 revision 再 page-in，16/16 页内选择正确、16/16 端到端成功，resident 峰值 2/2，外部副作用 0。报告为 [recovery-gate-matrix-latest.json](../benchmarks/results/recovery-gate-matrix-latest.json)。相对预期：机制结果符合预期，证明门控、stale refresh 和页内选择边界已打通；这是 manager 上界，不能替代真实 Jev 的页定位质量。
 
-同一 16-case 矩阵随后接入真实 Jev，脚本为 `benchmarks/benchmark_recovery_gate_live.py`。Jev 只接收自然语言 query、四个页摘要和当前 materialized page 的工具选项；target page/tool 只用于事后断言。真实运行中 12 个非 resident case 全部先被 gate 阻断，页恢复、页内选择和端到端均为 100%，`blocked_invalid_tool_calls=12`，resident 峰值 2/2，外部副作用 0；所有 case 总延迟 P50 1,306.3 ms、P95 1,346.9 ms。报告为 [recovery-gate-live-latest.json](../benchmarks/results/recovery-gate-live-latest.json)。相对预期：真实 Jev 在这个小页目录、短 query 矩阵上达到预期；这仍不能外推到更大页目录、语义相似干扰或多跳错误恢复。
+同一 16-case 矩阵随后接入真实 Jev，脚本为 `benchmarks/benchmark_recovery_gate_live.py`。模型收到自然语言 query、四个页摘要和当前页工具选项；但 harness 仍用隐藏的 target ID 调用 `resolve` 并据此决定恢复分支、物化目标页和端到端计分，因此这是目标条件化的 gate 控制实验，不是答案盲的检索评测。真实运行中 12 个非 resident case 被 gate 阻断，页恢复、页内选择和端到端报告均为 100%，resident 峰值 2/2，外部副作用 0；这里的 resident 只数管理器中的工具候选，不包括目录选项与 CLARIFY/STOP 等控制选项。总延迟 P50 1,306.3 ms、P95 1,346.9 ms。报告为 [recovery-gate-live-latest.json](../benchmarks/results/recovery-gate-live-latest.json)。
 
-## 43 步真实 Jev 长串联 workload
+12 页 × 4 状态的两次报告 [recovery-gate-large-live-latest.json](../benchmarks/results/recovery-gate-large-live-latest.json) 和 [recovery-gate-large-live-root-repeat.json](../benchmarks/results/recovery-gate-large-live-root-repeat.json) 都记录 47/48。该脚本同样以隐藏 target 驱动 gate 与恢复分支；其中 monitor query 同时要求检查指标和确认告警，但 gold 只标了 `inspect_metrics`。因此 47/48 的单项差异不能解释为模型混淆或操作错误，必须先修正为单意图用例或多标签计分再作结论。
 
-新增 `benchmarks/benchmark_jev_decision_dense_long.py`，将不含终止 stale-stop 的 21 步 A/B/C 路径重复两次，再加入一个最终 stale-stop，共 43 步；这样会跨周期触发 context replacement、page replacement、REFINE、CLARIFY 和安全终止。真实 Jev 运行得到 43/43（100%），7 次 fault、25 次 recovery、8 次模拟执行，resident 峰值 4/4、context 峰值 2/2，外部副作用 0，平均请求延迟 675.0 ms。报告为 [jev-decision-dense-serial-long-live.json](../benchmarks/results/jev-decision-dense-serial-long-live.json)。相对预期：比 22 步串联的最低预期更好，跨周期没有出现错误累积；但轨迹仍复用相同 5 个页和模板 query，下一步需增加语义相似干扰和多跳错误页。
+## 43 次真实 Jev 串行决策调用
+
+新增 `benchmarks/benchmark_jev_decision_dense_long.py`，将不含终止 stale-stop 的 21 个事件重复两次，再加入一个最终 stale-stop，共 43 次串行决策调用。真实 Jev 运行记录 43/43、7 次 fault、25 次 recovery、8 次模拟执行，resident 峰值 4/4、context 峰值 2/2，外部副作用 0，平均请求延迟 675.0 ms。报告为 [jev-decision-dense-serial-long-live.json](../benchmarks/results/jev-decision-dense-serial-long-live.json)。这 43 次调用复用相同事件和模板 query，没有真实跨周期任务依赖，不能据此声称长程依赖或跨周期稳定性。串联脚本的 context 摘要用于当步 paging 选择，但重建内容没有成为后续工具任务的输入；C 的真实任务依赖与效用仍未验证。
+
+## 不读取答案的有限选项多跳分页（2026-09-24）
+
+新的 `benchmarks/benchmark_jev_bounded_paging.py` 在 12 页、24 工具、每次总选项上限 8（包含目录与控制项）、工具缓存上限 2 下完成真实 Jev 评估。运行时不接收 expected page/tool，错误页照常加载、错误工具照常结束并事后记错。seed=7 的 48 episodes（12 个单意图 query × 4 初始状态）为 45/48；错误页起步为 9/12，empty/stale/correct-resident 各 12/12。三个错误都是从范围不符的 resident 页选了相近工具，未选择已提供的 PAGE；归档/最近记忆错误的返回概率仍达 0.96/0.92。
+
+开发集修复增加候选范围复核，暂存候选后单独选择 ACCEPT/PAGE/CLARIFY/STOP，同样不使用答案。复跑为 48/48，错误页恢复 12/12，但 Jev 调用数 116→174（+50%）、每例 P50 1,497→2,706 ms，P95 2,893→3,961 ms。固定 resident 的匹配对照为错误页 0/12、正确驻留 12/12；0% 是刻意缺少正确工具又禁止翻页的覆盖对照。
+
+冻结提示后改用 seed=19 的目录顺序/目标位置，仅测错误页与正确驻留 24 episodes：普通翻页 20/24（错误页8/12），复核23/24（错误页11/12）。剩余失败提前 CLARIFY，未生成候选，复核无法介入；这不是独立数据集。相对预期：去掉答案辅助后更难，失败可定位；复核在两种顺序上均改善，但不是通用解决方案，调用成本增加且未证明泛化。完整协议、逐项失败和报告链接见 [实验报告](reports/2026-09-24-bounded-paging.zh-CN.md)。本结果主要验证 A；B 的参数细化和 C 的上下文任务效用仍需独立证据。
 
 ## Radix/trie 参数候选设计判断
 

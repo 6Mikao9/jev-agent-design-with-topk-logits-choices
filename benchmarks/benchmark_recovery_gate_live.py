@@ -1,8 +1,9 @@
 """Live Jev recovery-gate matrix (no tool side effects).
 
-The target page is evaluation metadata only. Jev receives a natural-language
-request and page summaries, then sees only the selected page's tool options.
-The runtime gate blocks resolve when the target is empty, wrong-page, or stale.
+LEGACY TARGET-CONDITIONED CONTROL: labels are not marked in the model prompt,
+but target IDs drive resolve, recovery gating and materialization. This
+script measures a supplied-target control, not autonomous missing detection.
+See benchmark_jev_bounded_paging.py for answer-blind runtime evaluation.
 """
 from __future__ import annotations
 import argparse, json, sys, time

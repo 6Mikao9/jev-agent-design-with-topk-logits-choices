@@ -271,7 +271,8 @@ without resident candidates, and a commit can produce a simulated effect only
 when a validated candidate exists. The direct live rerun reached 22/22 (100%),
 with 4 faults, 13 recoveries, 4 simulated effects, resident peak 4/4,
 context peak 2/2, zero external side effects, and mean request latency
-1,019.6 ms. The credential-free report is
+1,019.6 ms. Its C path exercises context paging, but rebuilt context is not a
+necessary input to later task decisions. The credential-free report is
 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`. This is better
 than the first serial run and confirms the runtime fix on a small trajectory;
 it is not yet evidence for 20–100-step quality or real side-effect safety.
@@ -297,25 +298,68 @@ This confirms the runtime boundary, not Jev's retrieval or page-localization
 quality.
 
 `benchmark_recovery_gate_live.py` runs the same 16 states through the live Jev
-Choice endpoint. Jev sees only the natural-language query, page summaries, and
-the selected page's tools; target IDs are evaluation-only. The run blocked all
-12 non-resident resolutions before tool choice, then achieved 100% page
-recovery, in-page selection, and end-to-end success with resident peak 2/2 and
-zero external side effects. Per-case total latency was P50 1,306.3 ms and P95
-1,346.9 ms. The report is `benchmarks/results/recovery-gate-live-latest.json`.
-This is a small live matrix, not a large-directory or multi-hop quality claim.
+Choice endpoint. Jev sees the natural-language query, page summaries, and the
+selected page's tools, but the harness uses hidden target IDs to invoke the
+gate, decide recovery/materialization branches, and score end-to-end success.
+The run blocked all 12 non-resident resolutions before tool choice, then
+reported 100% page recovery, in-page selection, and end-to-end success; resident
+peak was 2/2 and external effects were zero. Resident peak counts manager-held
+tool candidates only; it excludes directory choices and CLARIFY/STOP controls.
+Per-case total latency was P50 1,306.3 ms and P95 1,346.9 ms. The report is
+`benchmarks/results/recovery-gate-live-latest.json`. Treat this as a target-
+conditioned gate control, not an answer-blind retrieval score.
 
-### 43-step live Jev serial workload
+The two 12-page, 48-case reports, `benchmarks/results/recovery-gate-large-live-latest.json`
+and `benchmarks/results/recovery-gate-large-live-root-repeat.json`, both record
+47/48. They share the target-conditioned gate/recovery harness. The monitor
+query requests both metric inspection and alert acknowledgement, while its
+gold label names only `inspect_metrics`; the single unmatched score therefore
+does not establish model confusion. Split this into single-action cases or use
+multi-label scoring before drawing an accuracy conclusion.
 
-`benchmark_jev_decision_dense_long.py` repeats the 21-step A/B/C path twice
-before one final stale-stop, producing 43 steps. This exercises context and
-page replacement across cycles while keeping effects simulated. The live run
-was 43/43 correct, with 7 faults, 25 recoveries, 8 simulated effects, resident
+### 43-call live Jev serial workload
+
+`benchmark_jev_decision_dense_long.py` repeats the same 21 events twice before
+one final stale-stop, producing 43 serial decision calls. The live run was
+43/43 correct, with 7 faults, 25 recoveries, 8 simulated effects, resident
 peak 4/4, context peak 2/2, zero external side effects, and mean request
 latency 675.0 ms. The report is
-`benchmarks/results/jev-decision-dense-serial-long-live.json`. This is better
-than the minimum expectation for cross-cycle stability, but it reuses five
-pages and templated queries; it is not yet a large semantic-interference test.
+`benchmarks/results/jev-decision-dense-serial-long-live.json`. The calls reuse
+fixed events and templated queries; they do not establish long-horizon task
+dependency or cross-cycle stability. Context summaries appear in paging
+choices, but rebuilt context is not consumed as necessary evidence by later
+tool decisions, so C task dependency/utility remains untested.
+
+### Answer-blind bounded paging
+
+`benchmark_jev_bounded_paging.py` separates runtime requests from evaluation
+labels. Any chosen page loads, including a wrong one; a wrong valid tool ends
+the simulated episode and is scored afterward. Twelve pages / 24 tools use
+at most eight total submitted choices (including directory and controls),
+with only two cached tools. A directory window contains five summaries plus
+NEXT/CLARIFY/STOP. Reports checkpoint after each case and support `--resume`.
+
+Seed 7: 45/48 episodes succeeded (12 queries repeated across four starting
+conditions). Wrong-page recovery was 9/12; empty, stale, and correctly resident
+conditions were each 12/12. Three scope-mismatched tools were selected instead
+of PAGE. Optional `--verify-candidate` adds a separate ACCEPT/PAGE decision
+before final simulated selection: this development-set rerun reached 48/48,
+but calls grew from 116 to 174 (+50%). A fixed-resident control reached 0/12
+on deliberately missing tools and 12/12 on correctly resident tools.
+
+With frozen prompts, seed 19 changes directory/target positions for 24
+wrong-page/correct-resident episodes: plain paging scored 20/24 (8/12 wrong
+starts), verification 23/24 (11/12 wrong starts), with 45 versus 80 calls.
+The remaining failure prematurely selected CLARIFY, so there was no candidate
+to verify. This is an order/position check using the same catalog templates,
+not a held-out benchmark. All 70 unit tests pass, including eight new runtime
+boundary tests.
+
+Raw reports: `benchmarks/results/jev-bounded-paging-seed7-k8.json`,
+`jev-bounded-paging-fixed-seed7-k8.json`, and
+`jev-bounded-paging-verify-seed7-k8.json` in the same results directory.
+See [protocol, failures, overhead and limitations](../docs/reports/2026-09-24-bounded-paging.zh-CN.md).
+This measures paging, not long-horizon task dependence or context-memory utility.
 
 ### Live Jev decision-dense smoke
 

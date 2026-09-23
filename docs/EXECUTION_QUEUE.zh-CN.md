@@ -4,6 +4,8 @@
 
 ## 最近状态更新（2026-09-24）
 
+- 当前主线已改用运行时不读取答案的多跳评估：seed7 翻页45/48、候选范围复核48/48；冻结提示的seed19顺序检查20/24→23/24，仍有提前CLARIFY。所有提交选项（含控制项）≤8，驻留工具≤2。下一项优先验证“缺能力 vs 真歧义”的判别，再补B参数REFINE、C真实上下文依赖。详见 [最新实验报告](reports/2026-09-24-bounded-paging.zh-CN.md)。旧oracle gate及43次重复调用的证据边界已更正。
+
 - P0.2 已有 `JevAgentOrchestrator` 垂直切片：两阶段页表、工具 Agent、版本/权限执行和 trace 可回放；完整 Tool/Memory/Prediction/Control 统一调度仍待完成。
 - P0.3 已完成真实 Jev Choice 页表回放、12-case recovery action、单跳多页工具定位和 22-step 串联；样本仍不足以证明长轨迹检索质量。
 - Virtual Option Space 已有同步 manager 原型；Virtual Context Space 已有 pinned/working/cold、aging、utility、hysteresis 和 minimum-residency 基线。
@@ -128,10 +130,10 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 
 当前进度：
 
-- **A：单跳真实 Jev 已完成，规模仍小。** 100K logical options 的 virtual paging 机制上界已通过；12-case hidden-target lexical retrieval→decision→recovery 基线已完成（missing detection 83.3%、page localization 83.3%、recovery 91.7%，报告 `benchmarks/results/retrieval-recovery-latest.json`）；18 个物理工具/6 个虚拟页的真实 Jev 单跳定位与页内选择为 12/12。更大页目录、多跳错误页恢复，以及 fixed resident / retrieval / hierarchical / virtual paging 的统一对照仍待。
+- **A：已有不读取答案的真实多跳诊断，规模仍小。** 100K logical options 结果仍属机制上界。旧 12 页 recovery-gate 用隐藏 target 辅助恢复，47/48 还受 monitor 双意图欠标注影响，已纠正证据边界。新 bounded paging（12 页/24 工具，所有提交选项含控制项 ≤8）seed=7 为 45/48、错误页恢复 9/12；候选范围复核后 48/48、错误页恢复 12/12，调用数 +50%。固定 resident 对照为错误页 0/12、正确页 12/12。下一步冻结提示后做未见请求和 retrieval/hierarchical 对照；详见 [实验报告](reports/2026-09-24-bounded-paging.zh-CN.md)。
 - **B：受控闭环已完成，规模仍小。** 真实 Jev recovery action 为 12/12，4-case retrieval→recovery smoke 为 4/4，8-step live decision-dense smoke 为 8/8；尚未覆盖长轨迹、多次失败、真实工具副作用和更大 confusion matrix。
-- **C：机制基线已完成，真实质量未完成。** 24-step deterministic workload 保持 resident/context 上限并触发 ContextFault、stale、PAGE、REFINE；22-step live 串联已触发多次真实 context page，但尚未完成 static/append-only/RAG/aging 的消融和关键事实召回评测。
-- **串联 workload：22 步真实 Jev 已跑通，仍需扩展。** 24-step oracle workload 已跑通；首轮 22-step live 串联为 19/22，定位出页选择失败后继续执行和动作/候选混面两个 runtime 问题。加入 lexical page-directory recovery gate 与控制动作分面后复跑为 22/22，报告 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`；下一步先加显式错误页恢复 case，再扩大到 20–100 步，并加入 fixed/retrieval/hierarchical 对照、P50/P95 和端到端 success。
+- **C：目前只有机制触发，尚无真实任务依赖证据。** 24-step deterministic workload 和 22-step live 串联能触发 context paging/ContextFault，但被重建的 context 内容没有作为后续任务决策的必要输入；static/append-only/RAG/aging 消融、关键事实召回与任务效用评测仍待。
+- **串联 workload：22/43 次真实调用诊断已跑通，真正任务依赖仍待。** 22-step 的 19/22→22/22 与 43-call 的 43/43 验证受控路径；后者重复模板，不代表长程推理。A 已补多跳诊断，之后优先补真实参数 REFINE、上下文事实被后续任务消费的 C 消融，再串成 20–100 步依赖轨迹。
 
 5. **工程优化（排在机制正确性之后）**：连接池和 HTTP/2/1.1 keep-alive、TTFB/request-id 观测、超时与安全重连、Jev/helper/工具并行 overlap、radix/trie 候选预取、高置信 fast path、决策批处理与调用合并。验收统一记录 fresh vs reuse、P50/P95、端到端 wall time、Jev 调用次数、fallback/recovery 正确率；任何 fast path 都不能绕过高风险 COMMIT 的校验。
 
@@ -142,7 +144,7 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 - recovery success：PAGE/EXPAND/REFINE 后是否恢复正确决策；
 - end-to-end success：上述步骤与 Jev 决策、执行和状态提交合并后的结果。
 
-因此 `P(EXPAND | target ∉ resident)` 只能作为缺失触发行为的条件指标，不能直接当作 paging 质量。当前 synthetic capability/page-recovery 的目标页由程序已知，属于机制上界；真实 Jev 的单跳多页定位已完成，但多跳错误页恢复、更大页目录、20–100 步 workload 和端到端 latency/cost/quality 仍未完成。
+因此 `P(EXPAND | target ∉ resident)` 只能作为缺失触发行为的条件指标，不能直接当作 paging 质量。当前 synthetic capability/page-recovery 的目标页由程序已知，属于机制上界。4 页与 12 页 recovery-gate live harness 也会用隐藏 target 决定 gate、修复分支和计分，尽管 target ID 不直接出现在模型 prompt；这些结果不能替代答案盲定位。resident 峰值只统计 manager 中驻留的工具候选，不含目录菜单和 CLARIFY/STOP 控制项。真实 Jev 的单跳多页定位已完成，但多跳错误页恢复、更大页目录、20–100 步任务依赖 workload 和端到端 latency/cost/quality 仍未完成。
 
 masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或失败分析中，暂不作为主线贡献；它只说明当前小型 checkpoint 的直接用法边界，不否定 proposer 接口或并行候选方向。
 
@@ -169,11 +171,14 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - 多物理工具/多虚拟页真实 Jev 选择已完成：18 个物理工具、6 个页、resident 上限 2；10 个需选页的 case 全部定位正确、页内工具 10/10、2 个歧义 case 全部 CLARIFY，最终 12/12。报告为 `benchmarks/results/multi-page-tool-selection-live.json`。相对预期：明显好于确定性词法控制（最终 58.3%）和最低预期；单跳实验已通过，后续转向多跳错误页恢复、更大页目录和串联扩展。
 
-- 22-step A/B/C 真实 Jev 串联已完成首轮与修复复跑：首轮 19/22（86.4%）暴露页选择失败后继续执行、以及 COMMIT 与 resident candidate 混在同一选项面的两个问题；修复后使用 lexical page directory、工具前置 coverage gate 和 control-only action surface，22/22，fault 4、recovery 13、模拟执行 4，resident/context 峰值 4/4 与 2/2，外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live.json` 与 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`。相对预期：正确率和机制边界好于首轮，平均 1.02 s/步仍高于离线 contract；先补显式错误页 recovery，再扩大 20–100 步。
+- 22-step 真实 Jev A/B/C 机制串联已完成首轮与修复复跑：首轮 19/22（86.4%）暴露页选择失败后继续执行、以及 COMMIT 与 resident candidate 混在同一选项面的两个 runtime 问题；修复后使用 lexical page directory、工具前置 coverage gate 和 control-only action surface，22/22，fault 4、recovery 13、模拟执行 4，resident/context 峰值 4/4 与 2/2，外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live.json` 与 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`。该 workload 的 C 仅触发 context paging，不包含由重建内容驱动的后续任务依赖；平均 1.02 s/步仍高于离线 contract，下一步先补显式错误页 recovery，再扩大具有真实依赖的 20–100 步 workload。
 - 显式错误页 recovery 已做一次真实 Jev 故障注入：首次文件页故意返回 `CLARIFY`，随后工具前置 gate 触发 `OptionFault`，阻止空 resident 工具调用并重新选择 `PAGE:files`；页恢复和页内工具均成功，`blocked_invalid_tool_calls=1`、`page_recovery_successes=1`、外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live-injected.json`；21/22 是包含故意注入错误的诊断值，不能替代正常 22/22。下一步扩展 empty/wrong-page/stale-page/correct-page 四状态矩阵。
 - recovery gate 四状态控制矩阵已完成：4 页 × `empty/wrong_page/stale/correct_resident` 共 16 cases，12 次非法工具解析在 gate 层阻断，stale 页经 revision refresh 后恢复；页恢复、页内选择和端到端均 100%，resident 峰值 2/2，外部副作用 0。报告为 `benchmarks/results/recovery-gate-matrix-latest.json`。相对预期：manager 机制边界符合预期；仍需把同一矩阵接到真实 Jev，测 Jev 的页定位和恢复选择错误。
-- recovery gate 真实 Jev 四状态矩阵已完成：同样 4 页 × 4 状态 16 cases，Jev 只看 query、页摘要和当前页工具；12 个非 resident case 全部在工具选择前被阻断，页恢复、页内选择和端到端 100%，P50/P95 为 1,306.3/1,346.9 ms，resident 峰值 2/2，外部副作用 0。报告为 `benchmarks/results/recovery-gate-live-latest.json`。相对预期：在小目录、短 query 上达到预期；下一步扩大语义相似页、更多页和多跳错误恢复。
-- 43-step 长串联真实 Jev 已完成：两个 21-step A/B/C 周期加最终 stale-stop，43/43，fault 7、recovery 25、模拟执行 8，resident/context 峰值 4/4 与 2/2，外部副作用 0，平均 675.0 ms/步。报告为 `benchmarks/results/jev-decision-dense-serial-long-live.json`。相对预期：跨周期稳定性好于最低预期；下一步加入语义相似干扰、更多页和多跳错误恢复，避免只复用模板 query。
+- recovery gate 真实 Jev 四状态矩阵已完成：4 页 × 4 状态共 16 cases，报告为 `benchmarks/results/recovery-gate-live-latest.json`。模型得到 query、页摘要和当前页工具，但 harness 用隐藏 target ID 决定 gate/恢复分支与计分；12 个非 resident case 被阻断，报告中的页恢复、页内选择和端到端均为 100%，P50/P95 为 1,306.3/1,346.9 ms。resident 峰值 2/2 只计工具候选，不含目录与控制项。此结果说明受控门控流程可运行，不是答案盲检索质量。
+- 12 页 × 4 状态的 recovery-gate 两次报告 `benchmarks/results/recovery-gate-large-live-latest.json` 与 `benchmarks/results/recovery-gate-large-live-root-repeat.json` 均为 47/48；隐藏 target 驱动 gate 与恢复分支。monitor query 同时要求 inspect 和 ack、gold 只标 inspect，故不能将单个未匹配计分断言为模型混淆。
+- 43 次串行决策调用真实 Jev 已完成：21 个事件重复两轮，再加最终 stale-stop，43/43，fault 7、recovery 25、模拟执行 8，resident/context 峰值 4/4 与 2/2，外部副作用 0，平均 675.0 ms/次。报告为 `benchmarks/results/jev-decision-dense-serial-long-live.json`。它重复固定事件和 query，没有真实跨周期长程依赖；C 仍缺少由 context 内容驱动的后续任务决策。
+- `benchmarks/benchmark_jev_bounded_paging.py` 已完成 seed=7 的真实多跳评估：45/48，错误页起步9/12；范围复核开发集复跑48/48，代价为116→174次调用。所有目录/工具/控制选项统一计入8项上限，工具resident另限2。下一轮优先冻结提示后验证未见请求、加入拒绝/歧义负例和retrieval对照；报告 `docs/reports/2026-09-24-bounded-paging.zh-CN.md`。
+- seed=19顺序/目标位置检查已完成：相同提示下24 episodes为20/24→23/24，错误页恢复8/12→11/12；剩余一例直接CLARIFY，无候选可供复核。优先加入缺能力/真歧义负例，不允许无条件覆盖CLARIFY；完整70个单元测试通过。本轮是A的诊断推进，B/C完整闭环尚未完成。
 
 
 
