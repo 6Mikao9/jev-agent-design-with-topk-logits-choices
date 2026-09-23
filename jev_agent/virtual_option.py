@@ -203,4 +203,9 @@ class VirtualOptionManager:
         page = self.register_page(
             child_page_id, children, revision=revision, parent_id=parent_id
         )
-        return self.page_in(page.page_id)
+        refined = self.page_in(page.page_id)
+        # Refinement replaces the coarse decision surface.  Keeping the parent
+        # resident would let a chooser commit the stale/coarse option again on
+        # the next decision round, defeating progressive refinement.
+        self._resident.pop(parent_id, None)
+        return refined

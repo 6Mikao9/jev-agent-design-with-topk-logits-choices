@@ -210,3 +210,16 @@ and the observed range was 856.6–4,428.3 ms. The JSON report is kept locally a
 `benchmarks/results/jev-recovery-live-12.json` and is credential-free. This is
 still action-contract classification; no tool side effect or page localization
 was executed.
+
+### Live retrieval → Jev → recovery closed loop
+
+`benchmark_jev_closed_loop.py` connects a live Jev action decision to a bounded
+`PagedMemoryIndex`/`TwoStageMemorySelector`, `VirtualOptionManager` page-in or
+refine, and a simulated executor with no external side effects. After fixing a
+runtime issue where a refined parent remained resident, the 2026-09-24 smoke run
+completed all four cases: resident commit, missing-page recovery, coarse refine,
+and ambiguous clarification. Terminal contract rate was 4/4; three cases reached
+simulated execution and the ambiguous case safely clarified. The credential-free
+report is `benchmarks/results/jev-closed-loop-fixed2.json`. This is the first
+retrieval-to-recovery live smoke test, not a long trajectory or real tool-side-effect
+benchmark.

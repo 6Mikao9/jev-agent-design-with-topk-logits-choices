@@ -108,3 +108,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 真实 Jev recovery action 第二轮
 
 将受控 action cases 扩展到 12 个后，2026-09-24 得到 COMMIT 1/1、PAGE 4/4、REFINE 2/2、CLARIFY 2/2、STOP 3/3，混淆矩阵无误选。平均请求耗时 2,097.8 ms，中位数 1,156.0 ms，范围 856.6–4,428.3 ms。报告为 [jev-recovery-live-12.json](../benchmarks/results/jev-recovery-live-12.json)。它仍只测 Jev 是否遵守受控 runtime action contract，没有执行工具副作用，也没有测 page localization 或长轨迹稳定性。
+
+## 真实 Jev retrieval→recovery 闭环 smoke
+
+新增 `benchmarks/benchmark_jev_closed_loop.py`，把 live Jev action、`PagedMemoryIndex`/`TwoStageMemorySelector`、`VirtualOptionManager` 的 page-in/refine 和无副作用模拟执行串起来。首轮发现 `REFINE` 后父选项仍留在 resident set，导致第二次决策重复选择 `REFINE`；已修复为子页 materialize 后移除父候选，并加入回归测试。修复后四个 case（resident commit、missing-page recovery、coarse refine、ambiguous clarify）全部完成预期终态，3 个到达模拟执行，1 个安全澄清。报告为 [jev-closed-loop-fixed2.json](../benchmarks/results/jev-closed-loop-fixed2.json)。这仍是小型 smoke，不是长轨迹或真实工具副作用评测。

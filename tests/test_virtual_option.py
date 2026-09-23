@@ -58,6 +58,8 @@ class VirtualOptionTests(unittest.TestCase):
         self.assertEqual([item.option_id for item in children], ["q1", "q2"])
         self.assertEqual(children[0].page_id, "refine:search:r3")
         self.assertEqual(manager.resolve("q2").description, "query two")
+        with self.assertRaises(OptionFault):
+            manager.resolve("search")
         with self.assertRaises(RefineFault):
             manager.refine("search", [])
 
