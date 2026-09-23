@@ -17,6 +17,14 @@ from .paged_memory import (
 )
 from .state_machine import CompiledDecisionRule, DecisionTraceGraph, ErrorSummaryQueue, TraceEdge
 from .topk import TopKBuilder, TopKResult, TransformersLogitsBackend
+from .virtual_option import (
+    OptionFault,
+    OptionPage,
+    RefineFault,
+    StaleVirtualOption,
+    VirtualOption,
+    VirtualOptionManager,
+)
 
 __all__ = [
     "Agent",
@@ -53,4 +61,10 @@ __all__ = [
     "TopKBuilder",
     "TopKResult",
     "TransformersLogitsBackend",
+    "OptionFault",
+    "OptionPage",
+    "RefineFault",
+    "StaleVirtualOption",
+    "VirtualOption",
+    "VirtualOptionManager",
 ]

@@ -41,6 +41,6 @@ BFCL coverage 只表示正确候选是否可用，不等于 Jev accuracy。必�
 
 ## 6. 适用范围与实现边界
 
-优先 workload：短字段、SQL、路径、JSON、工具参数、资源名和短澄清；长篇自然语言逐 token 细化只作为高成本实验。当前已有 `OptionSpace`、`PagedMemoryIndex`、`TwoStageMemorySelector`、`FastLogitsHelper`、Agent/orchestrator 与 trace。统一 `VirtualOptionManager`、正式 `OptionFault/RefineFault` 类型与基础 page-in/page-out/revision/refine 原型正在实现；异步 prefetch、完整 replacement policy 和 scaling benchmark 尚未实现。本文不包含密钥、权重或远端路径。
+优先 workload：短字段、SQL、路径、JSON、工具参数、资源名和短澄清；长篇自然语言逐 token 细化只作为高成本实验。当前已有 `OptionSpace`、`PagedMemoryIndex`、`TwoStageMemorySelector`、`FastLogitsHelper`、Agent/orchestrator、trace，以及同步 `VirtualOptionManager` 的稳定 ID、基础 page-in/page-out、LRU、revision/stale、`OptionFault/RefineFault` 和 refine 原型；异步 prefetch、完整 replacement policy、跨空间 resolver 和 scaling benchmark 尚未实现。本文不包含密钥、权重或远端路径。
 
 

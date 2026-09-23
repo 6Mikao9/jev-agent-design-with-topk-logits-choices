@@ -5,7 +5,9 @@
 
 实验主线使用逻辑空间 10/100/1K/10K/100K、resident K=8/16/32，在删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、`+EXPAND_K`、`+BACKTRACK/LOOKUP/CLARIFY`，报告 RecoveryRate、coverage、cost、latency、state errors、side effects。BFCL coverage 仅表示 candidate availability，不等于 Jev accuracy。适用 workload 优先短字段、SQL、路径、JSON、工具参数；长篇自然语言仅作高成本实验。
 
-详见 [Decision-Preserving Progressive Refinement](docs/DECISION_PRESERVING_REFINEMENT.zh-CN.md)。当前实现含 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace；VirtualOptionManager 与基础 page-in/page-out/revision/refine 原型正在实现，异步 prefetch、完整 replacement policy 和 scaling benchmark 仍待实现。`n`n# Jev 原生 Agent 系统设计
+详见 [Decision-Preserving Progressive Refinement](docs/DECISION_PRESERVING_REFINEMENT.zh-CN.md)。当前实现含 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace，以及 VirtualOptionManager 的基础 page-in/page-out、LRU、revision/stale、OptionFault/RefineFault 和 refine 原型；异步 prefetch、完整 replacement policy、跨空间 resolver 和 scaling benchmark 仍待实现。
+
+# Jev 原生 Agent 系统设计
 
 **Jev 自然语言对话原型：外部 logits、Top-k token 选择与 Agent 工具调用**
 

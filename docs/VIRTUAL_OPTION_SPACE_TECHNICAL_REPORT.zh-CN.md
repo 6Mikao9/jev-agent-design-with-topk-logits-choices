@@ -1,6 +1,6 @@
 # Virtual Option Space 技术报告
 
-> 状态：研究设计与原型边界（2026-09-24）。本文不声称 Virtual Option Manager、OptionFault、自动 prefetch 或完整 replacement 已实现。
+> 状态：研究设计与原型边界（2026-09-24）。仓库已有一个同步、有限的 `VirtualOptionManager` 原型，支持稳定 ID、基础 page-in/page-out、LRU、revision/stale 和 refine；自动异步 prefetch、学习型 replacement 和完整 fault loop 仍未实现。
 
 ## 摘要与范围
 
@@ -44,7 +44,7 @@ state, page_id, permission_tag, revision, expires_at, cost
 
 `virtual_option_id` 是稳定逻辑身份（例：`tool://repo/search`、`memory://block/42`），不等于当前显示文本。选项可经历 non-resident → resident → evicted → resident，ID 不变。页表记录 `page_id`、摘要、物理定位、生成器、权限和当前 revision；执行时通过 ID 解析最新对象，并拒绝 revision 不匹配的引用。动态页和检索结果必须设置 TTL 或父查询 revision；源删除、schema 改变、权限变化、任务状态变化都会标记 `invalid/stale`。
 
-当前代码已有稳定 ID、分页/预算和 revision/stale 校验的有限实现；尚无统一 Virtual Option Manager 或完整 page table 服务。
+当前代码已有 `VirtualOptionManager` 的有限实现，以及页表预算、稳定 ID 和 revision/stale 校验；它还不是持久化 page table 服务，也没有异步调度或跨空间 resolver。
 
 ## 4. Working set、replacement 与页大小
 
@@ -95,13 +95,13 @@ Jev 分布中若 `P(NEXT_PAGE|s_t)>τ_page`，可异步准备下一页；若某�
 
 ## 9. 实现路线与当前边界
 
-**P0 原型**：把现有 `OptionSpace`、`OptionSpaceRegistry`、`PagedMemoryIndex`、`TwoStageMemorySelector` 和 `DecisionTraceGraph` 接到统一 `VirtualOptionManager` 接口；实现稳定 ID、页表 revision、显式 `OptionFault`、有限 fault loop 和只读 page-in。
+**P0 原型**：把现有 `OptionSpace`、`OptionSpaceRegistry`、`PagedMemoryIndex`、`TwoStageMemorySelector` 和 `DecisionTraceGraph` 接到统一 `VirtualOptionManager` 接口；当前已实现稳定 ID、页表 revision、显式 `OptionFault`/`RefineFault`、同步 page-in/page-out、LRU 和基础 refine，尚未接入完整 fault loop。
 
 **P1 机制**：实现 LRU/LFU/semantic replacement、按空间配额、页级指标、概率校准与阈值 prefetch；加入动态文件/实体页和失效通知。
 
 **P2 评测**：接入真实 Jev 与 proxy/oracle 对照，提供回放、权限拒绝、schema drift、stale、重复 fault 和工具副作用隔离。
 
-当前代码已有 OptionSpace 的有限页、PagedMemoryIndex、TwoStageMemorySelector、state trace、稳定 ID 与 revision/stale 检查；Virtual Option Manager、OptionFault、prefetch、replacement 和异构统一 resolver 仍待实现。文档中的目标、伪代码和设计不能写成已完成能力。
+当前代码已有 OptionSpace 的有限页、PagedMemoryIndex、TwoStageMemorySelector、state trace 和 `VirtualOptionManager` 基础原型；异步 prefetch、学习型 replacement、异构统一 resolver、持久化页表和完整 scaling benchmark 仍待实现。文档中的目标、伪代码和设计不能写成已完成能力。
 
 ## 10. 可运行实验矩阵与消融
 
@@ -136,5 +136,5 @@ Jev 分布中若 `P(NEXT_PAGE|s_t)>τ_page`，可异步准备下一页；若某�
 
 本报告应与 [Decision-Preserving Progressive Refinement](DECISION_PRESERVING_REFINEMENT.zh-CN.md) 一起阅读：项目面向非生成式 Decision Model 的 Jev-native runtime。Virtual Option Space 负责覆盖范围，progressive refinement 负责候选分辨率；Jev 始终做最终选择。Top-k helper、fallback、confidence cascade、speculative decoding、FUDGE/GeDi、reward-guided decoding 与 Pydantic AI Jev fallback 均有近邻，不能作为单点新颖性。本文的贡献候选只是两轴 runtime 组合及其一致性/恢复实验，仍待验证。
 
-当前代码仅实现 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator 和 trace；VirtualOptionManager、OptionFault/RefineFault、真实 page-in/page-out/prefetch/replacement、完整 scaling benchmark 尚未实现。
+当前代码已实现 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace，以及同步 `VirtualOptionManager` 的基础 page-in/page-out、LRU、revision/stale、OptionFault/RefineFault 和 refine；异步 prefetch、完整 replacement、跨空间 resolver 和 scaling benchmark 尚未实现。
 
