@@ -91,3 +91,5 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 - adversarial lexical 控制已补上：正文-only、摘要改写和 32 个 decoy 页都会漏失，验证了当前粗筛的已知边界；语义/两阶段 Jev 对照仍待跑。
 
 - 两阶段 memory control matrix 已完成无网络回放：单页/双页成功读取，无候选、读取超预算和 stale selection 均安全阻断；真实 Jev 多页概率与质量仍待跑。
+
+- 候选回退控制流已复跑并保存报告；当前结果仍是 scripted oracle 上界，真实 Jev 选择、top-(n-m) 接受和补救成本仍待测。

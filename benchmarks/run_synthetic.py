@@ -3,8 +3,13 @@ from __future__ import annotations
 import json
 import ast
 import argparse
+import sys
 from pathlib import Path
 from statistics import mean
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from jev_agent.agent import Agent, ToolDefinition
 from jev_agent.models import Candidate, ChoiceOption, ChoiceResult, TaskState
@@ -12,8 +17,7 @@ from jev_agent.topk import LogitsState, TokenProposal, TopKBuilder
 from jev_agent.validation import validate_json_schema
 
 
-ROOT = Path(__file__).resolve().parent
-SCENARIOS = json.loads((ROOT / "scenarios.json").read_text(encoding="utf-8"))
+SCENARIOS = json.loads((Path(__file__).resolve().parent / "scenarios.json").read_text(encoding="utf-8"))
 
 
 class OracleChooser:

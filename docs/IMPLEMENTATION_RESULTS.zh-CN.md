@@ -90,3 +90,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 两阶段记忆控制矩阵
 
 新增 `benchmarks/benchmark_memory_matrix.py`，在无网络 replay chooser 下覆盖五条路径：单页读取、两页歧义读取、无候选、单页超出读取预算、计数选择后页面变 stale。2026-09-24 五个 case 分别得到 `read_complete`、`read_complete`、`no_candidates`、`read_budget_exceeded`、`stale_selection`；单页和双页读取分别为 22 和 46 字节。该结果验证边界和阻断逻辑，不代表真实 Jev 的排序质量。
+
+## 候选回退控制流复跑
+
+2026-09-24 在远端重新运行 `benchmarks/run_synthetic.py`，报告副本为 `benchmarks/results/synthetic-control-flow-latest.json`，远端原始文件为 `/tmp/synthetic-control-flow-latest.json`。6 个脚本场景中，proposal-only 完成 2/6（33.33%），显式 Top-k fallback 和 always-Top-k 都完成 5/6（83.33%）；显式 fallback 平均 helper 调用 15.67 次，always-Top-k 为 20.67 次。chooser/helper 读取脚本金标准，因此这些是控制流上界，不是 Jev 或模型质量结果。

@@ -183,3 +183,11 @@ they do not measure Jev selection accuracy.
 `single` read (1 page), `ambiguous_two_pages` read (2 pages), `no_candidates`, a
 `read_budget_exceeded` rejection, and `stale_selection` after the count decision.
 The replay chooser is deterministic wiring control, not Jev quality evidence.
+
+The latest remote replay (2026-09-24) is saved locally at
+`benchmarks/results/synthetic-control-flow-latest.json` and was generated from
+`/tmp/synthetic-control-flow-latest.json` in the remote project. Proposal-only
+completed 2/6 oracle cases (33.33%); explicit Top-k fallback and always-Top-k
+completed 5/6 (83.33%). Explicit fallback used 15.67 helper calls on average,
+versus 20.67 for always-Top-k. The chooser and helper know the scripted gold
+answer, so these are routing upper bounds rather than Jev or model quality.
