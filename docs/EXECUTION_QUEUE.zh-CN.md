@@ -9,6 +9,7 @@
 - Virtual Option Space 已有同步 manager 原型；Virtual Context Space 已有 pinned/working/cold、aging、utility、hysteresis 和 minimum-residency 基线。
 - 逻辑空间 10/100/1K/10K/100K、resident K=8/16/32 的机制 scaling 已跑通：100K 时 resident peak 仍为 K，stable-ID miss 为 0；这不是 Jev 质量结果。
 - arXiv 草稿已放入 `paper/main.tex`，实验表全部保留为 TODO/计划；当前环境没有 `pdflatex`，未生成 PDF。
+- `DecisionModel`、Replay 和 Oracle backend 适配器已加入代码，用于替换 Jev 和做能力上界实验；真实 backend capability scaling 仍待跑。
 
 ## 已完成的基础事项
 

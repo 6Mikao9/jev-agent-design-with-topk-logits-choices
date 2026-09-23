@@ -11,6 +11,7 @@
 - `jev_agent/orchestrator.py`：将两阶段页表读取、现有工具 Agent 和状态/错误 trace 串成可回放的单次执行闭环；它是垂直切片，不是完整规划器。
 - `jev_agent/virtual_option.py`：同步 Virtual Option Space 原型，提供稳定虚拟 ID、有限 resident set、page-in/page-out、LRU、revision/stale、`OptionFault`/`RefineFault` 和基础 refine；异步 prefetch、跨空间 resolver 和大规模 fault loop 仍待实现。
 - `jev_agent/context_residency.py`：Context-space 的 pinned/working/cold 基线，支持按类型 aging、utility reward、hysteresis、minimum residency 和 `ContextFault`；当前是确定性 lexical policy，尚未接入向量 RAG 或统一 fault scheduler。
+- `jev_agent/decision_model.py`：可替换 `DecisionModel` 边界，以及 Jev/Choice 适配、Replay 和 Oracle backend；Oracle 只用于机制上界，不代表模型质量。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、同上下文 top-k 重合、对话 trace 和速度拆分脚本。
 
 ## 候选覆盖结果

@@ -2,6 +2,7 @@
 
 from .agent import Agent, AgentResult, ToolDefinition
 from .context_residency import ContextBlock, ContextCandidate, ContextFault, ContextResidencyManager
+from .decision_model import ChoiceBackendAdapter, DecisionModel, DecisionRequest, OracleDecisionModel, ReplayDecisionModel
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
 from .memory import DependencyIndex, MemoryBank, MemoryRecord
@@ -34,6 +35,11 @@ __all__ = [
     "ContextCandidate",
     "ContextFault",
     "ContextResidencyManager",
+    "ChoiceBackendAdapter",
+    "DecisionModel",
+    "DecisionRequest",
+    "OracleDecisionModel",
+    "ReplayDecisionModel",
     "DiffusionCandidate",
     "FastLogitsHelper",
     "FastLogitsState",
