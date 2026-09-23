@@ -88,6 +88,28 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 
 本审计还发现两类容易混淆的表述，已统一修正：同步 VirtualOptionManager 已有机制实现，但统一生产调度器、异步 prefetch、学习型 replacement、真实 Jev scaling 仍未完成；固定 resident 在合成缺失目标实验中的 0% 是该策略的任务成功率，不是系统总体指标，也不代表 Jev 或 runtime 已“爆炸”。
 
+## Evaluation convergence（2026-09-24）
+
+本轮把评估收敛到三条主线，避免继续堆叠彼此孤立的数字。现阶段已经完成的是系统原语和受控边界证据：Virtual Option/Context、稳定 ID、page-in/out、refine、revision/stale、orchestrator 垂直切片、helper raw-logits/KV cache、BFCL/top-k 候选覆盖、top-k overlap、synthetic fallback、needle/对抗词法控制、两阶段 memory 控制矩阵、少量真实 Jev Choice replay，以及字段级 parameter prior。它们证明代码路径和边界可运行，但不等同于端到端 agent 质量。
+
+后续优先级调整为：完成当前 parameter prior 验证后暂停扩展散乱 feature，先做真实 Jev 闭环，再按以下顺序补齐论文级证据：
+
+1. **A — Decision-space virtualization**：对比 fixed resident、检索 top-k、分层候选和 virtual paging；扩大 logical option scale，记录 resident 大小、覆盖、恢复、延迟和成本。
+2. **B — Progressive refinement and recovery**：构造受控的 resident、missing、coarse、ambiguous、stale cases，测 `COMMIT/PAGE/REFINE/FALLBACK/CLARIFY/STOP` confusion matrix，并接入真实 Jev。
+3. **C — Dynamic context residency**：比较 static、append-only、RAG replacement、aging、aging+anti-thrashing；记录关键事实覆盖、选择稳定性、读取预算和决策效用。
+4. **串联 workload**：实现一个 20–100 步的 decision-dense deterministic workload，使三条主线在同一轨迹中真实触发，再报告端到端 success、P50/P95 latency、成本、fault 数和副作用。
+
+四个关键缺口必须分开测量，不能用 oracle locator 代替真实检索：
+
+- missing detection：目标是否被判定为不在 resident；
+- page localization：检索/页表是否找到包含目标的候选页；
+- recovery success：PAGE/EXPAND/REFINE 后是否恢复正确决策；
+- end-to-end success：上述步骤与 Jev 决策、执行和状态提交合并后的结果。
+
+因此 `P(EXPAND | target ∉ resident)` 只能作为缺失触发行为的条件指标，不能直接当作 paging 质量。当前 synthetic capability/page-recovery 的目标页由程序已知，属于机制上界；真实 Jev missing-option/recovery、去除 oracle locator 的 retrieval→Jev→recovery、20–100 步 workload 和端到端 latency/cost/quality 仍未完成。
+
+masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或失败分析中，暂不作为主线贡献；它只说明当前小型 checkpoint 的直接用法边界，不否定 proposer 接口或并行候选方向。
+
 - adversarial lexical 控制已补上：正文-only、摘要改写和 32 个 decoy 页都会漏失，验证了当前粗筛的已知边界；语义/两阶段 Jev 对照仍待跑。
 
 - 两阶段 memory control matrix 已完成无网络回放：单页/双页成功读取，无候选、读取超预算和 stale selection 均安全阻断；真实 Jev 多页概率与质量仍待跑。

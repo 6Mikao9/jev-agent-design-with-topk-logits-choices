@@ -14,6 +14,12 @@
 - `jev_agent/decision_model.py`：可替换 `DecisionModel` 边界，以及 Jev/Choice 适配、Replay 和 Oracle backend；Oracle 只用于机制上界，不代表模型质量。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、同上下文 top-k 重合、对话 trace 和速度拆分脚本。
 
+## 评估证据边界与收敛计划
+
+当前证据主要覆盖 runtime primitives 和受控机制边界：Virtual Option/Context、orchestrator 垂直切片、helper raw-logits/KV cache、BFCL/top-k 候选覆盖、top-k overlap、synthetic fallback、needle/对抗词法控制、两阶段 memory controls、少量真实 Jev Choice replay 和 parameter prior。它们没有组成真实长轨迹 Jev agent 的质量结论。
+
+下一阶段按三条主线收敛：A) Decision-space virtualization；B) PAGE/REFINE/FALLBACK progressive recovery；C) dynamic context residency，最后用一个 20–100 步 decision-dense workload 串联三者。真实实验必须分别报告 missing detection、page localization、recovery success 和 end-to-end success；当前 synthetic page-recovery 的目标页由程序预先知道，因此属于机制上界，不能替代 retrieval→Jev→recovery 的真实结果。`P(EXPAND | target ∉ resident)` 只描述触发条件行为，不是完整 paging 质量指标。masked diffusion 的直接 proposal 负结果可保留为 appendix negative result。
+
 ## 候选覆盖结果
 
 在 8 个固定中英文上下文上，Qwen3.5-0.8B 与 Qwen3.8-27B 使用相同的 248,077 项词表。Qwen3.5 top-k 与 Qwen3.8 top-k 的平均交集为：
