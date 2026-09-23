@@ -305,6 +305,18 @@ zero external side effects. Per-case total latency was P50 1,306.3 ms and P95
 1,346.9 ms. The report is `benchmarks/results/recovery-gate-live-latest.json`.
 This is a small live matrix, not a large-directory or multi-hop quality claim.
 
+### 43-step live Jev serial workload
+
+`benchmark_jev_decision_dense_long.py` repeats the 21-step A/B/C path twice
+before one final stale-stop, producing 43 steps. This exercises context and
+page replacement across cycles while keeping effects simulated. The live run
+was 43/43 correct, with 7 faults, 25 recoveries, 8 simulated effects, resident
+peak 4/4, context peak 2/2, zero external side effects, and mean request
+latency 675.0 ms. The report is
+`benchmarks/results/jev-decision-dense-serial-long-live.json`. This is better
+than the minimum expectation for cross-cycle stability, but it reuses five
+pages and templated queries; it is not yet a large semantic-interference test.
+
 ### Live Jev decision-dense smoke
 
 `benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions

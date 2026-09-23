@@ -153,6 +153,10 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 同一 16-case 矩阵随后接入真实 Jev，脚本为 `benchmarks/benchmark_recovery_gate_live.py`。Jev 只接收自然语言 query、四个页摘要和当前 materialized page 的工具选项；target page/tool 只用于事后断言。真实运行中 12 个非 resident case 全部先被 gate 阻断，页恢复、页内选择和端到端均为 100%，`blocked_invalid_tool_calls=12`，resident 峰值 2/2，外部副作用 0；所有 case 总延迟 P50 1,306.3 ms、P95 1,346.9 ms。报告为 [recovery-gate-live-latest.json](../benchmarks/results/recovery-gate-live-latest.json)。相对预期：真实 Jev 在这个小页目录、短 query 矩阵上达到预期；这仍不能外推到更大页目录、语义相似干扰或多跳错误恢复。
 
+## 43 步真实 Jev 长串联 workload
+
+新增 `benchmarks/benchmark_jev_decision_dense_long.py`，将不含终止 stale-stop 的 21 步 A/B/C 路径重复两次，再加入一个最终 stale-stop，共 43 步；这样会跨周期触发 context replacement、page replacement、REFINE、CLARIFY 和安全终止。真实 Jev 运行得到 43/43（100%），7 次 fault、25 次 recovery、8 次模拟执行，resident 峰值 4/4、context 峰值 2/2，外部副作用 0，平均请求延迟 675.0 ms。报告为 [jev-decision-dense-serial-long-live.json](../benchmarks/results/jev-decision-dense-serial-long-live.json)。相对预期：比 22 步串联的最低预期更好，跨周期没有出现错误累积；但轨迹仍复用相同 5 个页和模板 query，下一步需增加语义相似干扰和多跳错误页。
+
 ## Radix/trie 参数候选设计判断
 
 基数树适合把工具名、字段名、枚举值、路径片段和历史成功参数按共享前缀组织起来。它能减少候选描述和候选物化，并让 helper 同时预测互相独立的字段或预取下一层；候选仍需进入 Jev 的 OptionSpace，不能绕过 Jev 决策。对连续自由文本参数，基数树收益有限，应退回 schema/grammar validator 或普通 proposal。该方向已加入 roadmap，后续用参数 recall@K、非法参数率、候选物化时间、Jev 调用数、helper/网络 overlap 和副作用做验证；扩散 proposal 暂留为可选后续路线，当前小型 masked-diffusion 的质量边界不足以作为主线。

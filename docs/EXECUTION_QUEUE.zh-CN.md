@@ -173,6 +173,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - 显式错误页 recovery 已做一次真实 Jev 故障注入：首次文件页故意返回 `CLARIFY`，随后工具前置 gate 触发 `OptionFault`，阻止空 resident 工具调用并重新选择 `PAGE:files`；页恢复和页内工具均成功，`blocked_invalid_tool_calls=1`、`page_recovery_successes=1`、外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live-injected.json`；21/22 是包含故意注入错误的诊断值，不能替代正常 22/22。下一步扩展 empty/wrong-page/stale-page/correct-page 四状态矩阵。
 - recovery gate 四状态控制矩阵已完成：4 页 × `empty/wrong_page/stale/correct_resident` 共 16 cases，12 次非法工具解析在 gate 层阻断，stale 页经 revision refresh 后恢复；页恢复、页内选择和端到端均 100%，resident 峰值 2/2，外部副作用 0。报告为 `benchmarks/results/recovery-gate-matrix-latest.json`。相对预期：manager 机制边界符合预期；仍需把同一矩阵接到真实 Jev，测 Jev 的页定位和恢复选择错误。
 - recovery gate 真实 Jev 四状态矩阵已完成：同样 4 页 × 4 状态 16 cases，Jev 只看 query、页摘要和当前页工具；12 个非 resident case 全部在工具选择前被阻断，页恢复、页内选择和端到端 100%，P50/P95 为 1,306.3/1,346.9 ms，resident 峰值 2/2，外部副作用 0。报告为 `benchmarks/results/recovery-gate-live-latest.json`。相对预期：在小目录、短 query 上达到预期；下一步扩大语义相似页、更多页和多跳错误恢复。
+- 43-step 长串联真实 Jev 已完成：两个 21-step A/B/C 周期加最终 stale-stop，43/43，fault 7、recovery 25、模拟执行 8，resident/context 峰值 4/4 与 2/2，外部副作用 0，平均 675.0 ms/步。报告为 `benchmarks/results/jev-decision-dense-serial-long-live.json`。相对预期：跨周期稳定性好于最低预期；下一步加入语义相似干扰、更多页和多跳错误恢复，避免只复用模板 query。
 
 
 

@@ -188,7 +188,12 @@ def choose(chooser: ChoiceBackend, *, state: str, options: list[ChoiceOption], e
     }
 
 
-def run(chooser: ChoiceBackend) -> dict:
+def run(
+    chooser: ChoiceBackend,
+    events: tuple[Event, ...] = EVENTS,
+    *,
+    experiment: str = "jev-decision-dense-serial-22-step",
+) -> dict:
     manager = VirtualOptionManager(max_resident=4, max_pages=16)
     for page_id, spec in PAGES.items():
         manager.register_page(page_id, [VirtualOption(f"{page_id}:{tool}", f"{tool.replace('_', ' ')} operation", page_id=page_id, kind="action") for tool in spec["tools"]])
@@ -198,7 +203,7 @@ def run(chooser: ChoiceBackend) -> dict:
     rows = []
     simulated_effects = 0
     validated_candidate: str | None = None
-    for event in EVENTS:
+    for event in events:
         fault = None
         recovery = None
         recovery_selected = None
@@ -301,7 +306,7 @@ def run(chooser: ChoiceBackend) -> dict:
             "simulated_side_effect": effect_performed,
         })
     return {
-        "experiment": "jev-decision-dense-serial-22-step",
+        "experiment": experiment,
         "backend": "contract" if isinstance(chooser, ContractChooser) else "live Jev",
         "steps": rows,
         "summary": {
