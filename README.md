@@ -62,7 +62,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 当前仓库已经包含第一版 Python 原型：
 
-- `jev_agent/`：工具候选、schema 校验、依赖感知记忆、Jev Choice 适配器和 Top-k token 回退。
+- `jev_agent/`：工具候选、schema 校验、依赖感知记忆、页表记忆第一版、Jev Choice 适配器和 Top-k token 回退。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、Qwen3.5/Qwen3.8 同上下文比较、`END_DIALOGUE` 对话 trace 和速度拆分。
 - `tests/`：控制流、工具目录、KV cache 和并发候选的边界测试。
 - `pyproject.toml`：核心包及可选 Transformers/Torch 依赖。

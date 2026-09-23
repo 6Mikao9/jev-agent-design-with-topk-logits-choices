@@ -54,6 +54,8 @@
 
 现有 `MemoryBank` 已有依赖版本和失效概念。可以新增一个 `PagedMemoryIndex` 适配层，把 `MemoryRecord` 映射成页表条目，再把两阶段结果转为当前 Agent 的 `decision_dependencies` 和 `impact_tags`。早期实现不需要引入新的向量数据库：先用确定性的页表、BM25/关键词预筛和 fake Jev，固定回放后再接 embedding/RAG。
 
+当前仓库已提供无外部依赖的第一版 `jev_agent.paged_memory.PagedMemoryIndex`：它只做确定性的关键词预筛、稳定页 ID、显式有界读取和 revision/stale 校验，不替代 Jev 的两阶段选择，也不声称已经实现向量 RAG 或真正的多级压缩。
+
 推荐接口形状：
 
 ```python
