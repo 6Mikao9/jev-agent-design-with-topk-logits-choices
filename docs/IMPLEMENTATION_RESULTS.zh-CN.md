@@ -137,6 +137,14 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 同一 case 的确定性词法控制只有页定位 60%、页内工具选择 50%、澄清 0%、最终成功 58.3%，报告为 [multi-page-tool-selection-latest.json](../benchmarks/results/multi-page-tool-selection-latest.json)。相对预期：真实 Jev 在这个单跳、多页、小 resident 上限实验中明显好于控制，也超过了最低预期；但还没有证明多跳错误页恢复、更大的页目录、长轨迹或真实工具副作用。
 
+## 22 步真实 Jev A/B/C 串联 workload
+
+新增 `benchmarks/benchmark_jev_decision_dense_serial.py`，把 context page、虚拟工具页、页内工具选择、REFINE、提交、CLARIFY 和 stale STOP 串成同一条 22 步轨迹。真实 Jev 的第一次运行保留为失败对照：19/22（86.4%），`page_files` 误选 `CLARIFY`，下一步在空 resident 上继续选工具并误选 `PAGE`，`commit_query` 又把 resident 工具 ID 当成动作返回；这说明孤立动作 100% 不能直接外推到串联轨迹。原始报告为 `benchmarks/results/jev-decision-dense-serial-live.json`。
+
+针对这三个错误，runtime 增加了两处保护：工具决策前先用不含评估目标的词法页目录检查候选页是否 resident，缺失时重新走 PAGE recovery；提交、REFINE、CLARIFY 和 STOP 使用只含控制动作的选项面，把候选选择与动作选择分开；COMMIT 只有在已有 validated candidate 时才产生模拟副作用。修复后的直连复跑得到 22/22（100%）、4 次 fault、13 次 recovery、4 次模拟执行，resident 峰值 4/4、context 峰值 2/2、外部副作用 0，平均 Jev 请求 1,019.6 ms。报告为 [jev-decision-dense-serial-live-rerun.json](../benchmarks/results/jev-decision-dense-serial-live-rerun.json)。
+
+相对预期：机制边界和最终动作正确率好于修复前，且保持了 resident/context 上限；代价是每步仍需真实 Jev，平均延迟高于离线 contract，尚未证明 20–100 步长轨迹、错误页多跳恢复或真实工具副作用。下一步先加入一个显式错误页恢复 case 验证 recovery gate，再扩大到 20–100 步并比较 fixed resident、retrieval 和 virtual paging。
+
 ## Radix/trie 参数候选设计判断
 
 基数树适合把工具名、字段名、枚举值、路径片段和历史成功参数按共享前缀组织起来。它能减少候选描述和候选物化，并让 helper 同时预测互相独立的字段或预取下一层；候选仍需进入 Jev 的 OptionSpace，不能绕过 Jev 决策。对连续自由文本参数，基数树收益有限，应退回 schema/grammar validator 或普通 proposal。该方向已加入 roadmap，后续用参数 recall@K、非法参数率、候选物化时间、Jev 调用数、helper/网络 overlap 和副作用做验证；扩散 proposal 暂留为可选后续路线，当前小型 masked-diffusion 的质量边界不足以作为主线。

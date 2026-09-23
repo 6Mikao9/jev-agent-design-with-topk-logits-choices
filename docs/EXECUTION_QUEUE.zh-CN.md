@@ -5,7 +5,7 @@
 ## 最近状态更新（2026-09-24）
 
 - P0.2 已有 `JevAgentOrchestrator` 垂直切片：两阶段页表、工具 Agent、版本/权限执行和 trace 可回放；完整 Tool/Memory/Prediction/Control 统一调度仍待完成。
-- P0.3 已完成两次真实 Jev Choice 页表回放：一次 `CLARIFY`，一次两阶段读取成功；样本不足以证明检索质量。
+- P0.3 已完成真实 Jev Choice 页表回放、12-case recovery action、单跳多页工具定位和 22-step 串联；样本仍不足以证明长轨迹检索质量。
 - Virtual Option Space 已有同步 manager 原型；Virtual Context Space 已有 pinned/working/cold、aging、utility、hysteresis 和 minimum-residency 基线。
 - 逻辑空间 10/100/1K/10K/100K、resident K=8/16/32 的机制 scaling 已跑通：100K 时 resident peak 仍为 K，stable-ID miss 为 0；这不是 Jev 质量结果。
 - arXiv 草稿已放入 `paper/main.tex`，实验表全部保留为 TODO/计划；当前环境没有 `pdflatex`，未生成 PDF。
@@ -128,10 +128,10 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 
 当前进度：
 
-- **A：部分完成。** 100K logical options 的 virtual paging 机制上界已通过；12-case hidden-target lexical retrieval→decision→recovery 基线已完成（missing detection 83.3%、page localization 83.3%、recovery 91.7%，报告 `benchmarks/results/retrieval-recovery-latest.json`），但 backend 仍是确定性 contract，尚未接入真实 Jev，也没有完成 fixed resident / retrieval / hierarchical / virtual paging 的统一对照。
+- **A：单跳真实 Jev 已完成，规模仍小。** 100K logical options 的 virtual paging 机制上界已通过；12-case hidden-target lexical retrieval→decision→recovery 基线已完成（missing detection 83.3%、page localization 83.3%、recovery 91.7%，报告 `benchmarks/results/retrieval-recovery-latest.json`）；18 个物理工具/6 个虚拟页的真实 Jev 单跳定位与页内选择为 12/12。更大页目录、多跳错误页恢复，以及 fixed resident / retrieval / hierarchical / virtual paging 的统一对照仍待。
 - **B：受控闭环已完成，规模仍小。** 真实 Jev recovery action 为 12/12，4-case retrieval→recovery smoke 为 4/4，8-step live decision-dense smoke 为 8/8；尚未覆盖长轨迹、多次失败、真实工具副作用和更大 confusion matrix。
-- **C：机制基线已完成，真实质量未完成。** 24-step deterministic workload 保持 resident/context 上限并触发 ContextFault、stale、PAGE、REFINE；真实 Jev 目前只覆盖一个冷上下文 PAGE，尚未完成 static/append-only/RAG/aging 的消融和关键事实召回评测。
-- **串联 workload：控制流已完成，真实 Jev 串联未完成。** 24-step oracle workload 已跑通，真实 Jev 目前是 8-step smoke；必须先完成 A 的多物理工具/多虚拟页真实 Jev 定位实验，再扩大到 20–100 步，并加入真实 retrieval、工具模拟器、P50/P95 和端到端 success。
+- **C：机制基线已完成，真实质量未完成。** 24-step deterministic workload 保持 resident/context 上限并触发 ContextFault、stale、PAGE、REFINE；22-step live 串联已触发多次真实 context page，但尚未完成 static/append-only/RAG/aging 的消融和关键事实召回评测。
+- **串联 workload：22 步真实 Jev 已跑通，仍需扩展。** 24-step oracle workload 已跑通；首轮 22-step live 串联为 19/22，定位出页选择失败后继续执行和动作/候选混面两个 runtime 问题。加入 lexical page-directory recovery gate 与控制动作分面后复跑为 22/22，报告 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`；下一步先加显式错误页恢复 case，再扩大到 20–100 步，并加入 fixed/retrieval/hierarchical 对照、P50/P95 和端到端 success。
 
 5. **工程优化（排在机制正确性之后）**：连接池和 HTTP/2/1.1 keep-alive、TTFB/request-id 观测、超时与安全重连、Jev/helper/工具并行 overlap、radix/trie 候选预取、高置信 fast path、决策批处理与调用合并。验收统一记录 fresh vs reuse、P50/P95、端到端 wall time、Jev 调用次数、fallback/recovery 正确率；任何 fast path 都不能绕过高风险 COMMIT 的校验。
 
@@ -167,7 +167,9 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - 延迟长尾诊断已完成：fresh 直连分段显示建连约 0.32–0.49 s，响应体约 0.02 ms，主要等待在 response-header/TTFB（0.38–6.28 s，另有一次 30 s timeout）；持久连接对照平均 635.7 ms、P95 823.5 ms。相对预期：确认连接池能明显改善固定开销，但服务端/跨境路径长尾仍存在。后续优先接入连接池与 TTFB/request-id 观测，再用高置信 fast path、调用合并和 helper/网络 overlap 减少串行 Jev 次数。
 
-- 多物理工具/多虚拟页真实 Jev 选择已完成：18 个物理工具、6 个页、resident 上限 2；10 个需选页的 case 全部定位正确、页内工具 10/10、2 个歧义 case 全部 CLARIFY，最终 12/12。报告为 `benchmarks/results/multi-page-tool-selection-live.json`。相对预期：明显好于确定性词法控制（最终 58.3%）和最低预期；下一步先补多跳错误页恢复与更大页目录，再开始串联 workload。
+- 多物理工具/多虚拟页真实 Jev 选择已完成：18 个物理工具、6 个页、resident 上限 2；10 个需选页的 case 全部定位正确、页内工具 10/10、2 个歧义 case 全部 CLARIFY，最终 12/12。报告为 `benchmarks/results/multi-page-tool-selection-live.json`。相对预期：明显好于确定性词法控制（最终 58.3%）和最低预期；单跳实验已通过，后续转向多跳错误页恢复、更大页目录和串联扩展。
+
+- 22-step A/B/C 真实 Jev 串联已完成首轮与修复复跑：首轮 19/22（86.4%）暴露页选择失败后继续执行、以及 COMMIT 与 resident candidate 混在同一选项面的两个问题；修复后使用 lexical page directory、工具前置 coverage gate 和 control-only action surface，22/22，fault 4、recovery 13、模拟执行 4，resident/context 峰值 4/4 与 2/2，外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live.json` 与 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`。相对预期：正确率和机制边界好于首轮，平均 1.02 s/步仍高于离线 contract；先补显式错误页 recovery，再扩大 20–100 步。
 
 
 

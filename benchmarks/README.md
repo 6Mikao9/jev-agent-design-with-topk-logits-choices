@@ -255,6 +255,27 @@ better than this control and better than the minimum expectation for the
 single-hop test, but it does not yet test multi-hop page recovery, larger page
 directories, long trajectories, or real tool side effects.
 
+### 22-step live Jev A/B/C serial workload
+
+`benchmark_jev_decision_dense_serial.py` composes context paging, virtual tool
+pages, in-page tool choice, refinement, commit, clarification, and stale-stop
+in one bounded 22-step trajectory. The first live run is retained as a failure
+diagnostic: 19/22 decisions were correct (86.4%). Jev clarified the file-page
+request, then proceeded with an empty resident set, and later returned a
+resident tool ID where the commit control was required. The raw report is
+`benchmarks/results/jev-decision-dense-serial-live.json`.
+
+The rerun adds a lexical page-directory ranking and a precondition recovery
+gate before tool choice. Commit/refine/clarify/stop expose control actions
+without resident candidates, and a commit can produce a simulated effect only
+when a validated candidate exists. The direct live rerun reached 22/22 (100%),
+with 4 faults, 13 recoveries, 4 simulated effects, resident peak 4/4,
+context peak 2/2, zero external side effects, and mean request latency
+1,019.6 ms. The credential-free report is
+`benchmarks/results/jev-decision-dense-serial-live-rerun.json`. This is better
+than the first serial run and confirms the runtime fix on a small trajectory;
+it is not yet evidence for 20–100-step quality or real side-effect safety.
+
 ### Live Jev decision-dense smoke
 
 `benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions
