@@ -126,7 +126,8 @@ def register(manager: VirtualOptionManager, pages: dict, page_id: str, revision:
 
 
 def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
-                *, choice_cap: int = 8, max_calls: int = 10, allow_paging: bool = True) -> dict:
+                *, choice_cap: int = 8, max_calls: int = 10, allow_paging: bool = True,
+                verify_candidate: bool = False) -> dict:
     """Runtime cannot access EvaluationCase or any expected page/tool labels."""
     if choice_cap < 5 or max_calls < 1:
         raise ValueError("choice_cap must be >=5; max_calls must be positive")
@@ -146,6 +147,7 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
     events = []
     calls = []
     selected_tool = None
+    pending_tool = None
     terminal = "budget_exhausted"
     last_observation = ""
     resident_peak = len(manager.resident_options())
@@ -157,7 +159,19 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
             events.append({"event": "stale_block", "page": active})
             last_observation = "Cached page revision changed. Re-open a current page before using tools."
             active = None
-        if active:
+            pending_tool = None
+        if pending_tool is not None:
+            stage = "verify"
+            proposed = manager.resolve(pending_tool, expected_revision=revisions[active])
+            options = [ChoiceOption("ACCEPT", "The proposed tool exactly supports the requested action AND data domain/time scope.")]
+            if allow_paging:
+                options.append(ChoiceOption("PAGE", "Reject this proposal: wrong action or data domain/time scope. Browse other tool pages."))
+            state = (f"User request: {request.query}\nProposed tool: {proposed.description}\n"
+                     f"Tool page scope: {pages[active]['summary']}\n"
+                     "Validate compatibility before a simulated operation. Matching only the verb is insufficient; "
+                     "recent/archived data and different file or record domains are separate capabilities.")
+            instructions = "Decide whether this proposed operation can satisfy the full user request. Reject a scope mismatch even when the verb matches. Do not assume unlisted capabilities."
+        elif active:
             options = [ChoiceOption(o.option_id, o.description) for o in manager.resident_options()]
             if allow_paging:
                 options.append(ChoiceOption("PAGE", "No resident tool can do the requested action; browse the catalog."))
@@ -212,11 +226,20 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
                 events.append({"event": "page_in", "page": active})
                 last_observation = "Page loaded. Inspect its tools against the user's request."
         elif choice == "PAGE":
-            events.append({"event": "missing_capability", "page": active})
+            events.append({"event": "candidate_rejected" if stage == "verify" else "missing_capability", "page": active})
             last_observation = f"Left page '{pages[active]['summary']}' because its tools did not satisfy the request."
             active = None
+            pending_tool = None
+        elif stage == "verify":
+            selected = manager.resolve(pending_tool, expected_revision=revisions[active])
+            selected_tool = selected.option_id
+            terminal = "simulated_tool_selection"
+            break
         else:
             selected = manager.resolve(choice, expected_revision=revisions[active])
+            if verify_candidate:
+                pending_tool = selected.option_id
+                continue
             selected_tool = selected.option_id
             terminal = "simulated_tool_selection"
             break
@@ -244,7 +267,7 @@ def percentile(values: list[float], p: float) -> float:
 def summarize(rows: list[dict]) -> dict:
     needs_page = [r for r in rows if r["condition"] != "correct_resident"]
     wrong_start = [r for r in rows if r["condition"] == "wrong_page"]
-    missing = [r for r in wrong_start if any(e["event"] == "missing_capability" for e in r["events"])]
+    missing = [r for r in wrong_start if any(e["event"] in ("missing_capability", "candidate_rejected") for e in r["events"])]
     all_calls = [c for r in rows for c in r["calls"]]
     ms = [r["wall_ms"] for r in rows]
     return {"completed_cases": len(rows), "successes": sum(r["success"] for r in rows),
@@ -256,6 +279,7 @@ def summarize(rows: list[dict]) -> dict:
             "first_page_correct_count": sum(r["first_page_correct"] is True for r in needs_page),
             "missing_detection_numerator": len(missing), "missing_detection_denominator": len(wrong_start),
             "wrong_start_recovery_successes": sum(r["success"] for r in missing),
+            "candidate_rejections": sum(e["event"] == "candidate_rejected" for r in rows for e in r["events"]),
             "wrong_page_loads": sum(r["wrong_pages_loaded"] for r in rows),
             "next_window_actions": sum(e["event"] == "next_window" for r in rows for e in r["events"]),
             "stale_blocks": sum(e["event"] == "stale_block" for r in rows for e in r["events"]),
@@ -280,11 +304,13 @@ def main() -> None:
     parser.add_argument("--states", nargs="+", choices=("empty", "wrong_page", "stale", "correct_resident"),
                         default=["empty", "wrong_page", "stale", "correct_resident"])
     parser.add_argument("--no-paging", action="store_true")
+    parser.add_argument("--verify-candidate", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--key-stdin", action="store_true")
     args = parser.parse_args()
     config = {"seed": args.seed, "choice_cap": args.choice_cap, "max_calls": args.max_calls,
               "limit": args.limit, "conditions": args.states, "allow_paging": not args.no_paging,
+              "verify_candidate": args.verify_candidate,
               "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     pages = catalog_pages(args.seed)
     cases = make_cases(pages, args.states)
@@ -310,7 +336,8 @@ def main() -> None:
         if case.case_id in done:
             continue
         trace = run_episode(chooser, case.request, pages, choice_cap=args.choice_cap,
-                            max_calls=args.max_calls, allow_paging=not args.no_paging)
+                            max_calls=args.max_calls, allow_paging=not args.no_paging,
+                            verify_candidate=args.verify_candidate)
         row = score_episode(case, trace)
         report["rows"].append(row)
         report["summary"] = summarize(report["rows"])

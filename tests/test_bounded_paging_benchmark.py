@@ -71,6 +71,22 @@ class BoundedPagingTests(unittest.TestCase):
         self.assertNotIn('PAGE', [o.option_id for o in chooser.calls[0][1]])
         self.assertEqual(trace['terminal'], 'stop')
 
+    def test_verification_rejection_reenters_paging(self):
+        request = RuntimeRequest(self.pages['p11']['tools'][0]['query'], 'p00')
+        chooser = ScriptedChooser(['p00:op0', 'PAGE', 'NEXT', 'NEXT', 'PAGE:p11', 'p11:op0', 'ACCEPT'])
+        trace = run_episode(chooser, request, self.pages, verify_candidate=True)
+        self.assertEqual(trace['selected_tool'], 'p11:op0')
+        self.assertIn('candidate_rejected', [e['event'] for e in trace['events']])
+        self.assertLessEqual(trace['submitted_choice_peak'], 8)
+
+    def test_verification_accepts_wrong_candidate_without_oracle_veto(self):
+        request = RuntimeRequest(self.pages['p11']['tools'][0]['query'], 'p00')
+        chooser = ScriptedChooser(['p00:op0', 'ACCEPT'])
+        trace = run_episode(chooser, request, self.pages, verify_candidate=True)
+        self.assertEqual(trace['selected_tool'], 'p00:op0')
+        case = EvaluationCase('bad-accept', 'wrong_page', request, 'p11', 'p11:op0')
+        self.assertFalse(score_episode(case, trace)['success'])
+
 
 if __name__ == '__main__':
     unittest.main()
