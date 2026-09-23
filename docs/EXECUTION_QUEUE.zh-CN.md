@@ -2,6 +2,14 @@
 
 这份清单把对话中提出、但截至当前提交还没有完整交付的事项整理成可执行队列。`部分完成` 表示已经有骨架、代理实验或设计文档，但还没有端到端验证；后续轮次按优先级继续推进，不重复已经完成的工作。
 
+## 最近状态更新（2026-09-24）
+
+- P0.2 已有 `JevAgentOrchestrator` 垂直切片：两阶段页表、工具 Agent、版本/权限执行和 trace 可回放；完整 Tool/Memory/Prediction/Control 统一调度仍待完成。
+- P0.3 已完成两次真实 Jev Choice 页表回放：一次 `CLARIFY`，一次两阶段读取成功；样本不足以证明检索质量。
+- Virtual Option Space 已有同步 manager 原型；Virtual Context Space 已有 pinned/working/cold、aging、utility、hysteresis 和 minimum-residency 基线。
+- 逻辑空间 10/100/1K/10K/100K、resident K=8/16/32 的机制 scaling 已跑通：100K 时 resident peak 仍为 K，stable-ID miss 为 0；这不是 Jev 质量结果。
+- arXiv 草稿已放入 `paper/main.tex`，实验表全部保留为 TODO/计划；当前环境没有 `pdflatex`，未生成 PDF。
+
 ## 已完成的基础事项
 
 - 远端 Docker 可通过 SSH `32222` 端口直连；连接不使用网络代理。
