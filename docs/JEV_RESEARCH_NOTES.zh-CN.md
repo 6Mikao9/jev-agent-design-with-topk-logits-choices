@@ -36,7 +36,7 @@ Jev 不需要优化 KV cache 命中率；缓存可降低 helper forward 成本�
 
 将项目表述为面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。PAGE/EXPAND 改变 coverage，REFINE 改变 resolution；helper logits 仅提出候选，Jev 保留最终控制权。Top-k helper、fallback、confidence cascade、speculative decoding、FUDGE/GeDi、reward-guided decoding、Pydantic AI Jev fallback 均有先例，不能单独 claim 新颖。
 
-主实验：逻辑空间 10/100/1K/10K/100K，resident K=8/16/32；删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、+EXPAND_K、+BACKTRACK/LOOKUP/CLARIFY。记录 RecoveryRate、coverage、cost、latency、state errors、side effects；BFCL coverage 只代表 candidate availability。当前实现边界仍是既有 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace；VirtualOptionManager、OptionFault/RefineFault 与基础 page-in/out/revision/refine 原型正在实现；异步 prefetch、完整 replacement policy 与 scaling benchmark 待实现。
+主实验：逻辑空间 10/100/1K/10K/100K，resident K=8/16/32；删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、+EXPAND_K、+BACKTRACK/LOOKUP/CLARIFY。记录 RecoveryRate、coverage、cost、latency、state errors、side effects；BFCL coverage 只代表 candidate availability。当前实现边界仍是既有 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace；VirtualOptionManager、OptionFault/RefineFault 与基础 page-in/out/revision/refine 原型已实现并有机制基线；异步 prefetch、完整 replacement policy、统一 fault loop 与真实 Jev scaling 仍待实现。
 
 
 ## 统一运行时定位（DecisionModel 与双重虚拟化）
@@ -44,3 +44,4 @@ Jev 不需要优化 KV cache 命中率；缓存可降低 helper forward 成本�
 系统抽象为可替换的 `DecisionModel: D(s,O) -> P(O)` backend；Jev 是当前原型 backend，未来可替换 Mock/Oracle 或其他 typed decision backend。Open World 通过 Virtual Option Space 管理 resident options，通过 Virtual Context Space 管理 resident context blocks，随后驱动 Decision Model 与 state transition。PAGE/EXPAND 扩大候选覆盖，REFINE 降低候选粒度，ContextFault 触发二阶段 context paging，REVISION/INVALIDATE 保持一致性。
 
 Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `block_id/summary/raw_ref/revision/dependencies/last_access/access_count/utility/type/size/pinned`。按类型 aging：Pinned 不老化，任务状态慢老化，观察与 transient retrieval 快老化；utility aging 根据实际决策用途更新。采用 hysteresis、minimum residency、working-set history 与 phase-aware anti-thrashing。memory/RAG 在此是 context residency policy，而非普通“给模型找资料”。runtime 不依赖跨请求 prefix/KV reuse，允许 aggressive context mutation；这不等于声称 Jev backend 完全没有 KV cache。贡献边界是 Virtual Option + Context virtualization、decision-preserving refinement、fault/recovery/consistency 的组合，不声称各组件单点新颖。
+

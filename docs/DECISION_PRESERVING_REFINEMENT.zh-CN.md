@@ -41,7 +41,7 @@ BFCL coverage 只表示正确候选是否可用，不等于 Jev accuracy。必�
 
 ## 6. 适用范围与实现边界
 
-优先 workload：短字段、SQL、路径、JSON、工具参数、资源名和短澄清；长篇自然语言逐 token 细化只作为高成本实验。当前已有 `OptionSpace`、`PagedMemoryIndex`、`TwoStageMemorySelector`、`FastLogitsHelper`、Agent/orchestrator、trace，以及同步 `VirtualOptionManager` 的稳定 ID、基础 page-in/page-out、LRU、revision/stale、`OptionFault/RefineFault` 和 refine 原型；异步 prefetch、完整 replacement policy、跨空间 resolver 和 scaling benchmark 尚未实现。本文不包含密钥、权重或远端路径。
+优先 workload：短字段、SQL、路径、JSON、工具参数、资源名和短澄清；长篇自然语言逐 token 细化只作为高成本实验。当前已有 `OptionSpace`、`PagedMemoryIndex`、`TwoStageMemorySelector`、`FastLogitsHelper`、Agent/orchestrator、trace，以及同步 `VirtualOptionManager` 的稳定 ID、基础 page-in/page-out、LRU、revision/stale、`OptionFault/RefineFault` 和 refine 原型；异步 prefetch、完整 replacement policy、跨空间 resolver 和真实 backend scaling 尚未实现；同步 VirtualOptionManager 已有机制基线。本文不包含密钥、权重或远端路径。
 
 
 
@@ -50,3 +50,4 @@ BFCL coverage 只表示正确候选是否可用，不等于 Jev accuracy。必�
 系统抽象为可替换的 `DecisionModel: D(s,O) -> P(O)` backend；Jev 是当前原型 backend，未来可替换 Mock/Oracle 或其他 typed decision backend。Open World 通过 Virtual Option Space 管理 resident options，通过 Virtual Context Space 管理 resident context blocks，随后驱动 Decision Model 与 state transition。PAGE/EXPAND 扩大候选覆盖，REFINE 降低候选粒度，ContextFault 触发二阶段 context paging，REVISION/INVALIDATE 保持一致性。
 
 Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `block_id/summary/raw_ref/revision/dependencies/last_access/access_count/utility/type/size/pinned`。按类型 aging：Pinned 不老化，任务状态慢老化，观察与 transient retrieval 快老化；utility aging 根据实际决策用途更新。采用 hysteresis、minimum residency、working-set history 与 phase-aware anti-thrashing。memory/RAG 在此是 context residency policy，而非普通“给模型找资料”。runtime 不依赖跨请求 prefix/KV reuse，允许 aggressive context mutation；这不等于声称 Jev backend 完全没有 KV cache。贡献边界是 Virtual Option + Context virtualization、decision-preserving refinement、fault/recovery/consistency 的组合，不声称各组件单点新颖。
+

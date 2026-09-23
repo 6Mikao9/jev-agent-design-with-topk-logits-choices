@@ -73,3 +73,16 @@
 系统抽象为可替换的 `DecisionModel: D(s,O) -> P(O)` backend；Jev 是当前原型 backend，未来可替换 Mock/Oracle 或其他 typed decision backend。Open World 通过 Virtual Option Space 管理 resident options，通过 Virtual Context Space 管理 resident context blocks，随后驱动 Decision Model 与 state transition。PAGE/EXPAND 扩大候选覆盖，REFINE 降低候选粒度，ContextFault 触发二阶段 context paging，REVISION/INVALIDATE 保持一致性。
 
 Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `block_id/summary/raw_ref/revision/dependencies/last_access/access_count/utility/type/size/pinned`。按类型 aging：Pinned 不老化，任务状态慢老化，观察与 transient retrieval 快老化；utility aging 根据实际决策用途更新。采用 hysteresis、minimum residency、working-set history 与 phase-aware anti-thrashing。memory/RAG 在此是 context residency policy，而非普通“给模型找资料”。runtime 不依赖跨请求 prefix/KV reuse，允许 aggressive context mutation；这不等于声称 Jev backend 完全没有 KV cache。贡献边界是 Virtual Option + Context virtualization、decision-preserving refinement、fault/recovery/consistency 的组合，不声称各组件单点新颖。
+
+## Roadmap 审计（2026-09-24）
+
+本轮复核了执行队列、定位、研究笔记、论文和 benchmark 说明。当前主线已经覆盖：真实 Jev 闭环、两阶段页表记忆、Virtual Option/Context Space、PAGE/REFINE/RECOVERY、helper raw-logits/KV overlap、27B 与小模型候选覆盖、工具与状态机、公开 benchmark、扩散 proposal 以及论文草稿。以下项目仍必须保留在队列中，不能从设计文字推断为已完成：
+
+- **端到端真实性**：真实 Jev 逐 token 自然语言、真实 Jev 速度拆分、helper 与网络/工具 overlap、回答质量盲评。
+- **恢复与控制**：真实 backend 的 `RecoveryRate`、`Runtime Governor`、自适应 page materialization、候选不足时的 fallback、风险安全包络，以及 stale/revision 后的统一 fault loop。
+- **记忆与检索**：多级约 200 页页表、向量/BM25 混合检索、超远捞针矩阵、摘要丢事实和冲突事实消融；现有 lexical/selector 结果只属于机制基线。
+- **工具与 benchmark**：隔离下载并固定版本的推荐 benchmark（优先小体积代码/任务元数据）；BFCL 官方执行、tau 系列、ToolSandbox/BrowserGym 等必须分别记录许可证、环境和可比性，禁止把候选覆盖当官方成绩。
+- **扩散与状态机**：并行 proposal 的净延迟、接受率和副作用隔离；错误摘要、决策图导出和自动边编译必须经过回放、漂移检测和人工复核。
+- **研究与发布**：相关工作/新颖性继续以“组合接口候选”表述；论文实验保持 TODO，模型权重、数据集和凭据不进 Git。
+
+本审计还发现两类容易混淆的表述，已统一修正：同步 VirtualOptionManager 已有机制实现，但统一生产调度器、异步 prefetch、学习型 replacement、真实 Jev scaling 仍未完成；固定 resident 在合成缺失目标实验中的 0% 是该策略的任务成功率，不是系统总体指标，也不代表 Jev 或 runtime 已“爆炸”。
