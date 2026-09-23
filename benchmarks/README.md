@@ -141,3 +141,7 @@ confidence alone.
 ### Needle memory baseline
 
 Run `python benchmarks/benchmark_needle_memory.py --pages 100 --needle-position middle --noise-words 40 --seed 7 --limit 16 --output /tmp/needle.json`. This is a deterministic lexical coarse-prefilter baseline using PagedMemoryIndex; it does not measure two-stage Jev selection. Vary page count, needle position, noise length and limit, then compare recall@M, candidate count, latency and budgets.
+
+### Two-stage Jev memory replay
+
+Run `python benchmarks/benchmark_memory_jev.py --output /tmp/memory-jev.json` to replay the page-summary ranking and `TOP_2/4/8` count choice without a network key. This only checks selector wiring and budget/version handling. To call the real Choice endpoint, set `TYPESAFE_API_KEY` or `JEV_API_KEY` in the process environment and add `--live-jev`; credentials are never accepted as command-line arguments or written to the output.
