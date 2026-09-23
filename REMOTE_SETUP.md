@@ -14,6 +14,7 @@ filesystem, sibling container, or system CUDA installation was modified.
 | Qwen3.8-27B | `$HOME/models/Qwen3.8-27B`, ModelScope snapshot, 33/33 files SHA-256 verified |
 | Qwen3-0.6B helper | `$HOME/models/Qwen3-0.6B`, ModelScope snapshot |
 | Qwen3.5-0.8B helper | `$HOME/models/Qwen3.5-0.8B`, ModelScope snapshot, 14/14 files downloaded |
+| BabyLM MDLM small proposal model | `$HOME/models/babylm-2026-mdlm-small`, Apache-2.0, 98.4M parameters, optional masked-diffusion experiment |
 
 The Docker already had system CUDA 12.8. SGLang's PyTorch environment uses
 CUDA 13.0, so its JIT compiler must use the matching CUDA 13.0.88 toolchain
@@ -91,6 +92,13 @@ The Qwen3-0.6B helper loaded in BF16 on one idle RTX 5090. The BFCL V4
 are in the local project at
 `benchmarks/results/bfcl-v4-exec-simple-qwen3-0.6b-topk-100.json` and are an
 oracle upper bound on helper-token availability, not an end-to-end Jev score.
+
+The current prototype also contains `jev_agent/fast_logits.py` (raw logits and
+KV-cache decode), `jev_agent/paged_memory.py` (bounded page-table reads with
+revision checks), `jev_tools/` (local Jev/MCP-shaped tool contracts), and the
+masked-diffusion proposal runner. Their weights and raw JSON results stay under
+`$HOME/models` and the project `benchmarks/results` directory; none are added
+to Git.
 
 Temporary result files are moved into the project tree after each run. No
 service is left running: stop the exact launch PID and verify cards 2 and 3
