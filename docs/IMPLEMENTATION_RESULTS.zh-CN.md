@@ -64,3 +64,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 已知限制与护栏
 
 依赖版本、记忆召回和 `CLARIFY/STOP_UNRESOLVED` 已有基础实现；结构化 state packet、`REVIEW` 通道和通用精确算术路由仍是拟议优化，尚无缓解收益实验。用户提供的 Context Rot / No Rationale 等描述作为待检验假设保留，尚未独立核实其来源或因果解释。详细说明见 [JEV_LIMITATIONS_AND_GUARDRAILS.md](JEV_LIMITATIONS_AND_GUARDRAILS.md)。
+
+## 两阶段页表的真实 Jev Choice 回放
+
+2026-09-24 使用临时进程凭据直连 TypeSafe Choice，未把凭据写入仓库或结果。清晰请求的一次回放完成了两次 Jev 选择：第一阶段保留 `departure` 页，第二阶段选择 `TOP_1`（候选池只有一页时的安全降级），最终读取 22 字节原文；两次 Jev 请求耗时约 1.08 秒和 1.71 秒，总耗时约 2.79 秒。另一次故意含糊的请求触发了 `CLARIFY`，没有读取原文。两次结果都验证了 `NONE/CLARIFY/STOP` 和明确读取边界，但样本太小，不能说明检索质量或概率校准收益。
