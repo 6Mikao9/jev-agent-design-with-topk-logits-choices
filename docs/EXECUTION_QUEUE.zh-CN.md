@@ -99,6 +99,15 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 3. **C — Dynamic context residency**：比较 static、append-only、RAG replacement、aging、aging+anti-thrashing；记录关键事实覆盖、选择稳定性、读取预算和决策效用。
 4. **串联 workload**：实现一个 20–100 步的 decision-dense deterministic workload，使三条主线在同一轨迹中真实触发，再报告端到端 success、P50/P95 latency、成本、fault 数和副作用。
 
+当前进度：
+
+- **A：部分完成。** 100K logical options 的 virtual paging 机制上界已通过；12-case hidden-target lexical retrieval→decision→recovery 基线已完成（missing detection 83.3%、page localization 83.3%、recovery 91.7%，报告 `benchmarks/results/retrieval-recovery-latest.json`），但 backend 仍是确定性 contract，尚未接入真实 Jev，也没有完成 fixed resident / retrieval / hierarchical / virtual paging 的统一对照。
+- **B：受控闭环已完成，规模仍小。** 真实 Jev recovery action 为 12/12，4-case retrieval→recovery smoke 为 4/4，8-step live decision-dense smoke 为 8/8；尚未覆盖长轨迹、多次失败、真实工具副作用和更大 confusion matrix。
+- **C：机制基线已完成，真实质量未完成。** 24-step deterministic workload 保持 resident/context 上限并触发 ContextFault、stale、PAGE、REFINE；真实 Jev 目前只覆盖一个冷上下文 PAGE，尚未完成 static/append-only/RAG/aging 的消融和关键事实召回评测。
+- **串联 workload：控制流已完成，真实 Jev 串联未完成。** 24-step oracle workload 已跑通，真实 Jev 目前是 8-step smoke；下一步扩大到 20–100 步，并加入真实 retrieval、工具模拟器、P50/P95 和端到端 success。
+
+5. **工程优化（排在机制正确性之后）**：连接池和 HTTP/2/1.1 keep-alive、TTFB/request-id 观测、超时与安全重连、Jev/helper/工具并行 overlap、高置信 fast path、决策批处理与调用合并。验收统一记录 fresh vs reuse、P50/P95、端到端 wall time、Jev 调用次数、fallback/recovery 正确率；任何 fast path 都不能绕过高风险 COMMIT 的校验。
+
 四个关键缺口必须分开测量，不能用 oracle locator 代替真实检索：
 
 - missing detection：目标是否被判定为不在 resident；
