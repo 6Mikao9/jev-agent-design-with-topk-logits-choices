@@ -1,6 +1,6 @@
 # 将技术设计公开到 GitHub
 
-作者：刘云韬 · 文档版本：v0.3-design
+作者：刘云韬 · 文档版本：v0.4-design
 
 GitHub 适合公开这份设计：README 提供入口，Markdown 正文便于阅读和修改，讨论与后续实现可以集中在同一仓库。公开设计可以在完整实验前完成。
 
@@ -10,7 +10,7 @@ GitHub 适合公开这份设计：README 提供入口，Markdown 正文便于阅
 
 Description：
 
-> Research design for a Jev-native agent system: external helper logits Top-k proposals with Jev-controlled fallback, tool integration, decision-aware hierarchical memory, and dependency-aware replanning.
+> In-progress Jev-native agent system: helper-model logits produce a dynamic Top-k token table, Jev chooses the next token, and tool agents use controlled fallback, hierarchical memory, and dependency-aware replanning.
 
 GitHub Topics（添加到仓库 About 区域，每项一个主题）：
 
@@ -56,7 +56,7 @@ jev-agent-design/
 1. 在自己的 GitHub 账号下新建公开仓库，可使用 `jev-agent-design` 或自选名称。
 2. 署名已统一为“刘云韬”。初稿日期保留为写作日期，首次公开时间以实际发布为准。
 3. 将本目录内容上传到仓库根目录。README 中的链接已经按这一目录结构编写。
-4. 可以发布一个 `v0.3-design` Release，说明这是加入 Jev + 外部 logits Top-k 相关工作边界的技术设计版本。此前的 v0.2 为本地设计草案记录。
+4. 可以发布一个 `v0.4-design` Release，说明项目已进入进行中阶段，并加入“辅助 logits 生成动态 token 表、Jev 逐步选择下一 token”的协议说明。此前的 v0.3 为相关工作边界版本。
 5. 后续修改保留版本说明；新增实现、机制或实验时写清楚该版本增加了什么。
 
 GitHub Release 关联仓库历史中的标签。标签日期和 Release 日期可能不同，分享时可以给出明确的版本链接。[GitHub Release 官方说明](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)

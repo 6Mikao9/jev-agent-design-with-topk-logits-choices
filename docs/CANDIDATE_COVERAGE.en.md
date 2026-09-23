@@ -1,6 +1,6 @@
 # I2: Candidate Coverage Diagnosis and Recovery
 
-Author: Liu Yuntao (刘云韬) · Version: v0.3-design · Date: 2026-09-23
+Author: Liu Yuntao (刘云韬) · Version: v0.4-design · Date: 2026-09-23
 
 This note treats candidate coverage as an independent research question for the main [Jev-native agent design](DESIGN.en.md). It has no experimental results yet.
 
@@ -32,7 +32,7 @@ CLARIFY          Ask the user for a missing requirement
 STOP_UNRESOLVED  Stop and report the unresolved portion
 ```
 
-`FALLBACK_TOPK` requires a logits-capable helper and remaining budget. It preserves Jev's choice while the helper supplies candidate tokens. A missing resource ID or undecided user requirement cannot be recovered by continuation; observation or clarification comes first.
+`FALLBACK_TOPK` requires a logits-capable helper and remaining budget. At each round, the helper's logits are reduced to a dynamic token table containing the highest-probability `k` tokens; Jev chooses the next token from that table, the token is appended to the prefix, and the helper produces the next table. A missing resource ID or undecided user requirement cannot be recovered by continuation; observation or clarification comes first.
 
 ## Evaluation
 

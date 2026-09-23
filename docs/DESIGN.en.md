@@ -2,19 +2,19 @@
 
 | Item | Value |
 | --- | --- |
-| Version | v0.3-design |
+| Version | v0.4-design |
 | Draft date | 2026-09-23 |
 | Document type | Public technical design draft |
-| Status | Proposed system; no implementation or measured results yet |
+| Status | In progress; design, prototype implementation, and evaluation are being developed together |
 | Author | Liu Yuntao (刘云韬) |
 
 ## Abstract
 
 Jev provides a structured decision interface over explicit options. This is useful for choosing among actions, but agent systems built around free-form generation also need to construct tool arguments, maintain state, and communicate with users. This document proposes a Jev-native agent loop that fills that gap with explicit candidate management.
 
-The system reuses tool schemas and executors, asks a small autoregressive model or a diffusion model to propose complete arguments, fields, or fragments, and lets Jev select among them. When the coarse proposals are unsuitable and the task information is sufficient, Jev can select an explicit `FALLBACK_TOPK` action. The helper model then supplies next-token logits for the current prefix, Top-k forms a small dynamic option set, and Jev keeps choosing the next token or fragment. The design also includes decision-impact hierarchical memory (I1), dependency-aware local replanning (I3), an independent candidate-coverage problem (I2), natural interaction, candidate refresh, and cost accounting.
+The system reuses tool schemas and executors, asks a small autoregressive model or a diffusion model to propose complete arguments, fields, or fragments, and lets Jev select among them. When the coarse proposals are unsuitable and the task information is sufficient, Jev can select an explicit `FALLBACK_TOPK` action. The helper model then computes logits for the current parameter prefix. The highest-probability `k` tokens form a dynamic token table; Jev chooses the next token from that table, appends it to the prefix, and requests the next logits. In control flow this resembles next-token sampling in a generative language model, while Jev retains the decision over every presented option. The design also includes decision-impact hierarchical memory (I1), dependency-aware local replanning (I3), an independent candidate-coverage problem (I2), natural interaction, candidate refresh, and cost accounting.
 
-This is a research design. It makes no performance, reliability, or novelty guarantee. The proposed logits interface and rejection-triggered fallback need implementation and controlled comparison.
+The project is in progress. The protocol and prototype are being developed alongside baseline evaluation; performance and reliability results are not complete. This document makes no novelty guarantee. The proposed logits interface and rejection-triggered fallback still require controlled comparison.
 
 ## 1. Motivation and scope
 
