@@ -55,6 +55,7 @@ def run_case(
     manager, page_size = _manager(logical_options, resident_k)
     rng = random.Random(seed)
     successes = faults = page_ins = 0
+    initial_page_ins = recovery_page_ins = visible_trials = recovered = 0
     started = time.perf_counter()
     for _ in range(trials):
         resident = manager.resident_options()
@@ -62,6 +63,7 @@ def run_case(
             manager.evict_lru(len(resident))
         manager.page_in("page-000000")
         page_ins += 1
+        initial_page_ins += 1
         target_index = rng.randrange(logical_options)
         target_id = f"option-{target_index:07d}"
         target_page = f"page-{target_index // page_size:06d}"
@@ -74,9 +76,12 @@ def run_case(
         if not target_resident and strategy == "page_expand":
             manager.page_in(target_page)
             page_ins += 1
+            recovery_page_ins += 1
+            recovered += 1
         visible = {option.option_id for option in manager.resident_options()}
         if target_id not in visible:
             continue
+        visible_trials += 1
         chosen = target_id if rng.random() < capability else next(
             option_id for option_id in sorted(visible) if option_id != target_id
         ) if len(visible) > 1 else None
@@ -90,8 +95,15 @@ def run_case(
         "trials": trials,
         "successes": successes,
         "success_rate": successes / trials,
+        "coverage_rate": visible_trials / trials,
+        "resident_decision_success_rate": (
+            successes / visible_trials if visible_trials else None
+        ),
         "option_faults": faults,
         "page_ins": page_ins,
+        "initial_page_ins": initial_page_ins,
+        "recovery_page_ins": recovery_page_ins,
+        "recovery_rate": recovered / faults if faults else None,
         "elapsed_ms": round(elapsed_ms, 3),
         "seed": seed,
     }

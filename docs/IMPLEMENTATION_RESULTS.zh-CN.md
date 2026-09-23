@@ -63,6 +63,8 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 新增 `benchmarks/benchmark_backend_capability.py`，在逻辑选项规模 10/100/1K/10K/100K、resident `K=8/16/32` 上比较固定 resident set 与 synthetic `PAGE/EXPAND`。100K、backend capability=1.0、5 次抽样的结果为：固定 resident 在三种 K 下成功率均为 0%，page-expand 均为 100%；每组都保持 resident 上限，额外 page-in 为 5 次。该实验只验证“正确选项缺失时 page-in 能恢复”的机制，不包含 Jev 判断、真实任务质量或网络成本。
 
+这里的 `success_rate` 是端到端合成指标，必须和三个分项一起看：`coverage_rate` 表示目标最终是否进入 resident set，`resident_decision_success_rate` 表示目标已经可见时 synthetic backend 是否选中，`recovery_rate` 表示初始 `OptionFault` 被 PAGE/EXPAND 修复的比例。因而大逻辑空间下 fixed-resident 的 0% 是“永不分页导致目标不可见”的覆盖下界，不是 Jev 或整个 runtime 的真实任务准确率；`initial_page_ins` 是每轮初始化成本，`recovery_page_ins` 才是额外恢复成本。
+
 ## 小型 masked-diffusion proposal 试验
 
 从 [BabyLM 2026 Strict-Small MDLM 模型卡](https://huggingface.co/amosluna/babylm-2026-strict-small-mdlm-seed42) 下载了 Apache-2.0 的 98.4M 参数 checkpoint（约 377 MiB，权重不进 Git），在远端空闲 GPU 2 上成功加载。三个不同长度/去噪步数的完整 proposal 通过 `ParallelCandidateGenerator` 并行调度，单次约 0.34–0.44 秒；这是接口和调度验证，不是质量结果。

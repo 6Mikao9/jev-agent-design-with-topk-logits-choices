@@ -153,3 +153,11 @@ Run `python benchmarks/benchmark_virtual_option_scaling.py --output /tmp/virtual
 ### Decision Model capability and page recovery
 
 Run `python benchmarks/benchmark_backend_capability.py --output /tmp/backend-capability.json` to compare a fixed resident set with synthetic `PAGE/EXPAND` recovery at backend capabilities 0.6/0.7/0.8/0.9/1.0. Logical option sizes and resident bounds match the paper plan. This is an oracle-style mechanism baseline: replace the synthetic backend with real Jev or another DecisionModel only after fixing the task split and measuring `RecoveryRate` on initially missing targets.
+
+Read the fields separately: `coverage_rate` says whether the target became resident,
+`resident_decision_success_rate` says how often the synthetic backend selected it after
+it was visible, and `recovery_rate` says how many initial `OptionFault`s were repaired by
+the strategy. `success_rate` is their end-to-end product for this benchmark. Therefore a
+0% fixed-resident result at a large logical size is an intentional coverage lower bound,
+not a claim that Jev or the runtime has 0% task accuracy. `initial_page_ins` is setup
+cost; `recovery_page_ins` is the additional paging work.
