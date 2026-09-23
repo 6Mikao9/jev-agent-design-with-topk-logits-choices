@@ -128,3 +128,11 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 新增 `benchmarks/benchmark_jev_latency_breakdown.py`，用直连 HTTPS 分开记录连接建立、收到响应头前的等待（TTFB 加 API 网关/服务端等待）和响应体读取。有效 key 的 fresh-connection 运行完成 7/8 个请求：每次 DNS/TCP/TLS 建连约 0.32–0.49 s，响应体读取约 0.02 ms，但响应头等待从 0.38 s 到 6.28 s 不等，另有一次 30 s 读取超时。报告为 [jev-latency-breakdown-fresh.json](../benchmarks/results/jev-latency-breakdown-fresh.json)。同一 payload 的持久连接对照 8/8 成功，平均 635.7 ms、P95 823.5 ms、最大 1,041.9 ms，报告为 [jev-latency-breakdown-valid.json](../benchmarks/results/jev-latency-breakdown-valid.json)。
 
 结论：7.64 s 的首轮均值主要来自跨境 HTTPS 路径和 API 网关/服务端排队或推理的 TTFB 长尾；新建 TLS 连接是每次约 0.3–0.5 s 的次要固定成本。响应体、JSON 解析、本机 GPU、helper 和应用层重试都不能解释 4–19 s 的长尾：客户端没有应用层重试，payload 只有约 433–484 input tokens，body 读取约 0.02 ms。工程上优先使用带连接池的直连 HTTP 客户端（保留 `trust_env=False` 和 TLS 校验）、记录 request-id/TTFB、设置超时与重连；算法上减少串行 Jev 调用，在高置信稳定状态走本地安全 fast path，只在 fault、分叉、低置信或 `END_DIALOGUE` 节点调用 Jev，并把 helper 预取与网络请求重叠。持久连接对照相对预期明显更好，但服务端 TTFB 仍需单独优化或换低延迟区域/端点。
+
+## 多物理工具与多虚拟页的真实 Jev 选择
+
+新增 `benchmarks/benchmark_multi_page_tool_selection.py`。实验把 18 个物理工具划分到 6 个虚拟页，resident 上限为 2；Jev 第一阶段只看到用户 query 和 6 个页摘要，必须选择 `PAGE:<page_id>`、`CLARIFY` 或 `STOP`，系统随后只 materialize Jev 选中的页，第二阶段再让 Jev 从该页的 3 个工具中选择。目标页和目标工具只用于事后评估，没有进入 Jev state/options，也没有执行工具副作用。
+
+2026-09-24 真实 Jev 运行 12 个 case：10 个需要选页、2 个故意含糊。页定位 10/10，页内工具选择 10/10，澄清 2/2，最终成功 12/12；共 22 次 Jev 调用，resident 上限 2，单 case 总延迟 P50 1,296.6 ms、P95 1,438.4 ms，外部副作用为 0。报告为 [multi-page-tool-selection-live.json](../benchmarks/results/multi-page-tool-selection-live.json)。
+
+同一 case 的确定性词法控制只有页定位 60%、页内工具选择 50%、澄清 0%、最终成功 58.3%，报告为 [multi-page-tool-selection-latest.json](../benchmarks/results/multi-page-tool-selection-latest.json)。相对预期：真实 Jev 在这个单跳、多页、小 resident 上限实验中明显好于控制，也超过了最低预期；但还没有证明多跳错误页恢复、更大的页目录、长轨迹或真实工具副作用。

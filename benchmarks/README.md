@@ -235,6 +235,26 @@ external side effects and total cost 30.0 units. The raw JSON is kept locally at
 `benchmarks/results/decision-dense-workload-latest.json` and is an oracle/control
 flow baseline, not live Jev quality evidence.
 
+### Multi-page physical-tool selection
+
+`benchmark_multi_page_tool_selection.py` partitions 18 physical tools into six
+virtual pages while keeping a resident bound of 2. In `--live` mode Jev first
+sees only the query and all page summaries, chooses a `PAGE:<page_id>`,
+`CLARIFY`, or `STOP`, and only the selected page is materialized for the second
+tool choice. The target page and target tool are used only for evaluation and
+are not sent to Jev. The 2026-09-24 run covered 10 actionable page cases and 2
+ambiguous cases: page localization 10/10, in-page tool selection 10/10,
+clarification 2/2, and final success 12/12. It made 22 Jev calls, with
+per-case P50 1,296.6 ms and P95 1,438.4 ms, and zero external side effects. The
+credential-free live report is `benchmarks/results/multi-page-tool-selection-live.json`.
+
+The deterministic lexical control scored page localization 60%, in-page tool
+selection 50%, clarification 0%, and final success 58.3%; its report is
+`benchmarks/results/multi-page-tool-selection-latest.json`. The live result is
+better than this control and better than the minimum expectation for the
+single-hop test, but it does not yet test multi-hop page recovery, larger page
+directories, long trajectories, or real tool side effects.
+
 ### Live Jev decision-dense smoke
 
 `benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions
