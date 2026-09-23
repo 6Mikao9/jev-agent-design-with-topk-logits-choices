@@ -57,7 +57,7 @@ def main():
             fault=type(exc).__name__; recovery="blocked"
         elapsed=(time.perf_counter()-t)*1000
         costs += 1.0 + (0.5 if fault else 0.0) + (0.25 if recovery else 0.0)
-        records.append({"step":step,"event":event,"action":action,"fault":fault,"recovery":recovery,"simulated_side_effect":effect,"resident_count":len(om.resident_options()),"resident_bound":om.max_resident,"context_working_count":len(cm.working_ids()),"context_bound":cm.max_working,"latency_ms":round(elapsed,4),"cost_units":round(1.0+(0.5 if fault else 0.0)+(0.25 if recovery else 0.0),2)})
+        records.append({"step":step,"event":event,"action":action,"fault":fault,"recovery":recovery,"simulated_side_effect":effect,"resident_count":len(om.resident_options()),"resident_bound":om.max_resident,"context_working_count":len(cm._working),"context_bound":cm.max_working,"latency_ms":round(elapsed,4),"cost_units":round(1.0+(0.5 if fault else 0.0)+(0.25 if recovery else 0.0),2)})
     result={"name":"decision-dense-workload","workload_steps":len(records),"oracle_control":True,"external_side_effects":0,"simulated_side_effects":side_effects,"resident_bound":om.max_resident,"max_resident_observed":max(r["resident_count"] for r in records),"context_bound":cm.max_working,"max_context_working_observed":max(r["context_working_count"] for r in records),"faults":sum(bool(r["fault"]) for r in records),"recoveries":sum(bool(r["recovery"]) for r in records),"total_cost_units":round(costs,2),"steps":records}
     OUT.parent.mkdir(exist_ok=True); OUT.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8"); print(json.dumps({k:result[k] for k in result if k!="steps"},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()
