@@ -1,18 +1,24 @@
 # Jev 原生 Agent 系统设计
 
-**Jev 自然语言对话原型：Qwen‑0.8B logits、Top-k token 选择与 Agent 工具调用**
+**Jev 自然语言对话原型：外部 logits、Top-k token 选择与 Agent 工具调用**
 
 English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memory, and Natural Interaction for Decision Models**
 
-版本：`v0.5-prototype` · 初稿日期：2026-09-23 · 状态：原型已实现，项目进行中
+版本：`v0.6-prototype` · 初稿日期：2026-09-23 · 状态：原型已实现，项目进行中
 
 作者：**匿名作者**
 
 本项目探索如何围绕 Jev 的结构化决策接口构建完整 agent 系统。系统利用现有工具定义和执行器，由辅助小模型或扩散模型先提出完整参数或片段，Jev 选择合适的提案；当提案均不适用时，Jev 可显式选择 Top-k 回退。辅助生成模型根据当前参数前缀输出 logits，取概率最高的 k 个 token 组成动态 token 表；Jev 从这张表中选择下一 token，拼接到前缀后继续下一轮。这使回退路径在控制流程上类似大模型的下一 token 采样，同时保留 Jev 对每一步选项的决策权。系统按决策影响管理多层记忆，并根据依赖关系在任务变化后局部重规划，支持自然语言任务、澄清和修正。
 
-项目已经完成一个可运行原型：使用低成本 Qwen‑0.8B 辅助模型提供下一 token logits，Jev 从 logits 的 Top-k 动态 token 表中逐步选择 token，形成连贯的文本输出。当前正在推进代码整理、复现实验和基线比较；性能结果和实验结论仍会随评估更新。
+项目已经完成一个可运行原型：使用低成本外部生成模型提供下一 token logits，Jev 从 logits 的 Top-k 动态 token 表中逐步选择 token，形成连贯的自然语言输出。外部模型可以替换，Qwen‑0.8B 只是当前实验实现之一。当前正在推进代码整理、复现实验和基线比较；性能结果和实验结论仍会随评估更新。
 
-当前原型的研究定位是：在本次有界检索中，我们尚未发现公开的 Jev + Qwen‑0.8B + 外部 logits Top-k token 选择组合，用于输出连贯、可正常交流的自然语言。这里的“正常交流”指动态语言模型候选支持下的句子级语义表达，不是固定词表拼接出的字符或词序列。项目可暂称为“我们检索到的首个公开 Jev 外部语言模型流畅对话方案”，该声明限定于检索范围和具体技术组合，待代码、样例和基线公开后再进一步确认。
+当前原型的研究定位是：在本次有界检索中，我们尚未发现公开的 Jev + 外部生成模型 logits Top-k token 选择组合，用于输出连贯、可正常交流的自然语言。这里的“正常交流”指动态语言模型候选支持下的句子级语义表达，不是固定词表拼接出的字符或词序列。项目可暂称为“我们检索到的首个公开 Jev 外部 logits 流畅对话方案”，该声明限定于检索范围和具体技术组合，待代码、样例和基线公开后再进一步确认。
+
+## 与固定词表生成的区别
+
+固定词表方案把字符、词或短语预先放入选项，再让 Jev 重复选择。它适合验证“Jev 能否连续选择”，但可能受到词表覆盖、未登录词、分词边界、组合效率和上下文连贯性的限制；词表没有覆盖的表达只能近似拼接，输出是否自然也依赖词表设计。
+
+本项目让外部生成模型根据已经选中的文本前缀动态计算 logits，并把概率最高的 token 组成当前轮 token 表。Jev 选择一个 token 后，系统把它加入前缀，再计算下一轮 token 表。这样候选来自语言模型的上下文分布，可以组合预先没有枚举的词、缩写和句子结构，目标是让 Jev 参与每一步决策，同时保留正常自然语言对话能力。流畅度、成本和错误率仍需用公开代码和统一基线实测。
 
 ## 阅读入口
 
@@ -36,7 +42,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 ## 与已有工作的关系
 
-已有框架与社区项目已覆盖部分相关能力，例如 [Pydantic AI 的 Jev 集成](https://pydantic.dev/docs/ai/models/typesafe/)、[jev-browser](https://github.com/jkudish/jev-browser) 的浏览器决策及辅助文本生成、[ChatJev](https://github.com/erik-dunteman/ChatJev)、[jevchat](https://github.com/kyle-pena-nlp/jevchat) 和 [jev-bot](https://github.com/nssmd/jev-bot) 的不同形式逐步文本输出、[jev-memory](https://github.com/NicolasMontone/jev-memory) 的记忆管理。因此，本项目不以“第一个 Jev agent”或“首次让 Jev 逐步选择文本”为贡献声明。本版本记录的较窄原型差异是：使用 Qwen‑0.8B 作为外部 token 提案模型，根据当前前缀提供 logits Top-k 动态 token 表，再由 Jev 逐步选择并生成连贯文本。我们在 2026-09-23 的有界检索中没有找到完全相同的公开实现；这不等于证明全球首创，仍需公开代码、配置和基线结果。
+已有框架与社区项目已覆盖部分相关能力，例如 [Pydantic AI 的 Jev 集成](https://pydantic.dev/docs/ai/models/typesafe/)、[jev-browser](https://github.com/jkudish/jev-browser) 的浏览器决策及辅助文本生成、[ChatJev](https://github.com/erik-dunteman/ChatJev)、[jevchat](https://github.com/kyle-pena-nlp/jevchat) 和 [jev-bot](https://github.com/nssmd/jev-bot) 的不同形式逐步文本输出、[jev-memory](https://github.com/NicolasMontone/jev-memory) 的记忆管理。因此，本项目不以“第一个 Jev agent”或“首次让 Jev 逐步选择文本”为贡献声明。本版本记录的较窄原型差异是：外部生成模型根据当前前缀提供 logits Top-k 动态 token 表，再由 Jev 逐步选择并生成连贯自然语言。我们在 2026-09-23 的有界检索中没有找到完全相同的公开实现；这不等于证明全球首创，仍需公开代码、配置和基线结果。
 
 ## 文档状态与署名
 

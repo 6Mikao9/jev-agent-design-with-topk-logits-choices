@@ -1,8 +1,8 @@
-# A Jev Natural-Language Conversation Prototype: Qwen-0.8B Logits, Top-k Token Selection, and Agent Tools
+# A Jev Natural-Language Conversation Prototype: External Logits, Top-k Token Selection, and Agent Tools
 
 | Item | Value |
 | --- | --- |
-| Version | v0.5-prototype |
+| Version | v0.6-prototype |
 | Draft date | 2026-09-23 |
 | Document type | Public technical design draft |
 | Status | Prototype implemented; project in progress with code cleanup and evaluation underway |
@@ -14,7 +14,13 @@ Jev provides a structured decision interface over explicit options. This is usef
 
 The system reuses tool schemas and executors, asks a small autoregressive model or a diffusion model to propose complete arguments, fields, or fragments, and lets Jev select among them. When the coarse proposals are unsuitable and the task information is sufficient, Jev can select an explicit `FALLBACK_TOPK` action. The helper model then computes logits for the current parameter prefix. The highest-probability `k` tokens form a dynamic token table; Jev chooses the next token from that table, appends it to the prefix, and requests the next logits. In control flow this resembles next-token sampling in a generative language model, while Jev retains the decision over every presented option. The design also includes decision-impact hierarchical memory (I1), dependency-aware local replanning (I3), an independent candidate-coverage problem (I2), natural interaction, candidate refresh, and cost accounting.
 
-The project is in progress. A working prototype now uses Qwen-0.8B to produce next-token logits for the current prefix, exposes the highest-probability Top-k tokens as a dynamic token table, and lets Jev choose the next token repeatedly to produce fluent, natural-language dialogue. This is sentence-level semantic communication supported by dynamic language-model candidates, rather than a fixed character or word list. Code cleanup, reproducibility, and baseline evaluation are underway. The project can provisionally describe itself as the first public Jev + external Qwen-0.8B logits approach for fluent dialogue found in our bounded search. This is a scoped priority claim, not a global novelty guarantee.
+The project is in progress. A working prototype now uses a replaceable external language model to produce next-token logits for the current prefix, exposes the highest-probability Top-k tokens as a dynamic token table, and lets Jev choose the next token repeatedly to produce fluent, natural-language dialogue. This is sentence-level semantic communication supported by dynamic language-model candidates, rather than a fixed character or word list. Qwen-0.8B is one low-cost implementation choice in the current prototype, not part of the system definition. Code cleanup, reproducibility, and baseline evaluation are underway. The project can provisionally describe itself as the first public Jev + external logits approach for fluent dialogue found in our bounded search. This is a scoped priority claim, not a global novelty guarantee.
+
+### 1.4 Difference from fixed-vocabulary generation
+
+Fixed-vocabulary approaches put characters, words, or short phrases into the option list before Jev repeatedly chooses among them. They are useful for testing repeated choice, but can be limited by vocabulary coverage, unknown words, token boundaries, composition efficiency, and context coherence. Expressions outside the vocabulary may have to be approximated by awkward pieces, and output quality depends heavily on how the list was designed.
+
+This project asks an external language model to compute logits from the text prefix that Jev has actually selected. The highest-probability tokens form the current token table; after Jev selects one token, it is appended to the prefix and the next table is computed. The candidates therefore follow a language model's contextual distribution and can compose words, abbreviations, and sentence structures that were not enumerated in advance. The goal is to keep Jev in every decision while retaining ordinary natural-language conversation. Fluency, cost, and error rates still require public code and controlled baselines.
 
 ## 1. Motivation and scope
 
@@ -144,7 +150,7 @@ The design is inspired by proposal-and-verification relationships in speculative
 
 ### 6.4 Known related work and bounded originality claim
 
-ChatJev, jevchat, and jev-bot already show repeated Jev choices over a fixed word, character, or token list. Their candidate lists and generation strategies differ from the prototype described here; they do not establish the specific Qwen-0.8B helper-logits composition claimed for this project. ChatJev's displayed probability ranking is a view of Jev's returned probabilities, not helper-model logits.
+ChatJev, jevchat, and jev-bot already show repeated Jev choices over a fixed word, character, or token list. Their candidate lists and generation strategies differ from the external-logits prototype described here; they do not establish the same dynamic helper-logits composition. ChatJev's displayed probability ranking is a view of Jev's returned probabilities, not helper-model logits.
 
 FUDGE uses a generator's next-token candidates and a discriminator to adjust generation, while Reward-Guided Speculative Decoding rejects a draft and asks a target generative model to produce a new step. Pydantic AI documents whole-step LLM fallback for unsupported Jev tool arguments. These are close components, but they do not, in the sources checked here, combine coarse tool-argument rejection, external helper logits Top-k, and continued Jev control in one path.
 

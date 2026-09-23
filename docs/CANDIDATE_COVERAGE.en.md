@@ -1,6 +1,6 @@
 # I2: Candidate Coverage Diagnosis and Recovery
 
-Author: Anonymous · Version: v0.5-prototype · Date: 2026-09-23
+Author: Anonymous · Version: v0.6-prototype · Date: 2026-09-23
 
 This note treats candidate coverage as an independent research question for the main [Jev-native agent design](DESIGN.en.md). It has no experimental results yet.
 

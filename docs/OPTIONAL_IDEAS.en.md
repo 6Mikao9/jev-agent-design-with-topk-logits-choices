@@ -1,6 +1,6 @@
 # Optional Research Directions
 
-Author: Anonymous · Version: v0.5-prototype · Date: 2026-09-23
+Author: Anonymous · Version: v0.6-prototype · Date: 2026-09-23
 
 The main [design](DESIGN.en.md) adopts I1 and I3. I2 is a separate note. I4, I5, and I6 remain optional directions. These are research hypotheses without experimental results or a completed novelty survey.
 
