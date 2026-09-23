@@ -34,6 +34,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - [Jev 本地工具目录](docs/TOOL_CATALOG.zh-CN.md)：安全文件/JSON/shell、人工复核和 MCP 形状适配。
 - [框架、benchmark 与扩散方向资料](docs/RESEARCH_CATALOG.zh-CN.md)：官方来源、许可证边界和隔离评测建议。
 - [选项空间、状态机与可展开记忆](docs/OPTION_SPACES_STATE_MACHINE.zh-CN.md)：工具/记忆/预测分区、错误记忆和 88 轮验证队列。
+- [JEV 研究笔记](docs/JEV_RESEARCH_NOTES.zh-CN.md)：两阶段记忆、并行预测、超远捞针评测与失败边界。
 
 ## 核心设想
 
@@ -77,3 +78,4 @@ python -m unittest discover -s tests -v
 实现与首轮结果见[原型实现与实测](docs/IMPLEMENTATION_RESULTS.zh-CN.md)。已知 Jev 缺陷对应的 state engineering、人工复核出口、确定性工具路由和 helper 优化见[JEV 限制与护栏](docs/JEV_LIMITATIONS_AND_GUARDRAILS.md)。
 
 `benchmarks/results/` 用于本地完整结果；可公开的小体量回答样例位于 `benchmarks/examples/`。模型权重与运行时密钥不进入 Git。
+

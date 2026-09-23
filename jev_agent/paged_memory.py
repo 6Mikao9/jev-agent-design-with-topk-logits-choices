@@ -8,6 +8,7 @@ page IDs to ``read_selected`` after the two candidate rounds.
 """
 
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Iterable
@@ -48,6 +49,10 @@ class StaleMemoryPage(RuntimeError):
     """Raised when a selected page changed after Jev saw its page-table entry."""
 
 
+class MemoryReadBudgetExceeded(ValueError):
+    """Raised when a selected read exceeds any of its hard size limits."""
+
+
 class PagedMemoryIndex:
     """A bounded, deterministic page table with lexical prefiltering and LRU metadata."""
 
@@ -60,14 +65,37 @@ class PagedMemoryIndex:
     def upsert(self, page: MemoryPage) -> None:
         if not page.page_id or not page.summary:
             raise ValueError("page_id and summary are required")
-        if page.page_id not in self._pages and len(self._pages) >= self.max_pages:
+        existing = self._pages.get(page.page_id)
+        if existing is None and len(self._pages) >= self.max_pages:
             raise ValueError("page table capacity exhausted")
-        self._pages[page.page_id] = page
+        if existing is not None:
+            # A retry of the exact same record is idempotent.  Any content,
+            # summary, or dependency change must carry a newer revision so a
+            # page selected by Jev cannot be silently replaced underneath it.
+            same_payload = (
+                existing.summary == page.summary
+                and existing.content == page.content
+                and existing.parent_id == page.parent_id
+                and existing.tags == page.tags
+                and existing.dependency_versions == page.dependency_versions
+                and existing.sensitive == page.sensitive
+            )
+            if page.revision < existing.revision:
+                raise ValueError("page revision must not decrease")
+            if page.revision == existing.revision and not same_payload:
+                raise ValueError("content, summary, or dependencies changed without revision increment")
+            if page.revision == existing.revision:
+                # Preserve the index-owned access timestamp and stale marker on
+                # an idempotent retry; callers cannot mutate either by alias.
+                return
+        self._pages[page.page_id] = deepcopy(page)
 
     def mark_stale(self, page_id: str) -> None:
         self._pages[page_id].stale = True
 
-    def select_pages(self, context: str, *, limit: int = 16) -> list[PageCandidate]:
+    def select_pages(
+        self, context: str, *, limit: int = 16, allow_sensitive: bool = False
+    ) -> list[PageCandidate]:
         """Return page-table summaries for the first Jev selection round.
 
         This prefilter never returns page content.  Ties are stable by page ID,
@@ -78,7 +106,7 @@ class PagedMemoryIndex:
         query = _terms(context)
         scored: list[tuple[float, MemoryPage]] = []
         for page in self._pages.values():
-            if page.stale:
+            if page.stale or (page.sensitive and not allow_sensitive):
                 continue
             terms = _terms(" ".join((page.summary, *page.tags)))
             overlap = len(query & terms)
@@ -90,7 +118,7 @@ class PagedMemoryIndex:
                 scored.append((score, page))
         scored.sort(key=lambda item: (-item[0], item[1].page_id))
         return [
-            PageCandidate(page.page_id, page.summary, score, page.revision, page.parent_id, page.tags)
+            PageCandidate(page.page_id, page.summary, score, page.revision, page.parent_id, tuple(page.tags))
             for score, page in scored[:limit]
         ]
 
@@ -99,29 +127,67 @@ class PagedMemoryIndex:
         page_ids: Iterable[str],
         *,
         max_bytes: int = 32_000,
+        max_pages: int = 8,
+        max_page_bytes: int = 8_192,
+        allow_sensitive: bool = False,
         expected_revisions: dict[str, int] | None = None,
+        expected_dependency_versions: dict[str, int] | None = None,
     ) -> list[MemoryPage]:
-        """Read explicitly selected pages under a total UTF-8 byte budget."""
-        if max_bytes < 1:
-            raise ValueError("max_bytes must be positive")
+        """Read explicitly selected pages under hard, all-or-nothing budgets.
+
+        Every selected page is validated before any access timestamp is changed.
+        This prevents a stale, unauthorized, or over-budget page later in a
+        batch from causing an earlier page to look as though it was read.
+        """
+        for name, value in (
+            ("max_bytes", max_bytes),
+            ("max_pages", max_pages),
+            ("max_page_bytes", max_page_bytes),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"{name} must be positive")
         expected_revisions = expected_revisions or {}
-        result: list[MemoryPage] = []
+        expected_dependency_versions = expected_dependency_versions or {}
+
+        # Materialize once: generators must not be consumed while validating
+        # and then mysteriously produce a different read set.
+        requested = list(page_ids)
+        if len(requested) > max_pages:
+            raise MemoryReadBudgetExceeded(
+                f"selected {len(requested)} pages, max_pages is {max_pages}"
+            )
+        if len(set(requested)) != len(requested):
+            raise ValueError("page_ids must not contain duplicates")
+
+        # Validation is deliberately separate from mutation.  A missing page
+        # remains a normal KeyError for callers that need to distinguish it.
+        pages: list[MemoryPage] = []
         used = 0
-        seen: set[str] = set()
-        for page_id in page_ids:
-            if page_id in seen:
-                continue
-            seen.add(page_id)
+        for page_id in requested:
             page = self._pages[page_id]
             if page.stale or page.revision != expected_revisions.get(page_id, page.revision):
                 raise StaleMemoryPage(page_id)
+            if page.sensitive and not allow_sensitive:
+                raise PermissionError(f"sensitive page requires allow_sensitive: {page_id}")
+            for dependency, expected in expected_dependency_versions.items():
+                if dependency in page.dependency_versions and page.dependency_versions[dependency] != expected:
+                    raise StaleMemoryPage(page_id)
             size = len(page.content.encode("utf-8"))
-            if used + size > max_bytes:
-                break
+            if size > max_page_bytes:
+                raise MemoryReadBudgetExceeded(
+                    f"page {page_id} is {size} bytes, max_page_bytes is {max_page_bytes}"
+                )
             used += size
-            page.last_accessed = datetime.now(timezone.utc).timestamp()
-            result.append(page)
-        return result
+            if used > max_bytes:
+                raise MemoryReadBudgetExceeded(
+                    f"selected pages use {used} bytes, max_bytes is {max_bytes}"
+                )
+            pages.append(page)
+
+        now = datetime.now(timezone.utc).timestamp()
+        for page in pages:
+            page.last_accessed = now
+        return [deepcopy(page) for page in pages]
 
     def __len__(self) -> int:
         return len(self._pages)
