@@ -137,3 +137,7 @@ For all comparisons, use the same task split and call/token/time budgets for
 proposal-only, unconditional Top-k, and Jev-triggered fallback. Score with
 validated arguments and deterministic execution results rather than Jev's
 confidence alone.
+
+### Needle memory baseline
+
+Run `python benchmarks/benchmark_needle_memory.py --pages 100 --needle-position middle --noise-words 40 --seed 7 --limit 16 --output /tmp/needle.json`. This is a deterministic lexical coarse-prefilter baseline using PagedMemoryIndex; it does not measure two-stage Jev selection. Vary page count, needle position, noise length and limit, then compare recall@M, candidate count, latency and budgets.
