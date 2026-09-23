@@ -1,7 +1,14 @@
 """Deterministic lexical needle-in-a-haystack baseline for PagedMemoryIndex."""
 from __future__ import annotations
-import argparse, json, random, time
+import argparse, json, random, sys, time
 from pathlib import Path
+
+# Keep direct ``python benchmarks/benchmark_needle_memory.py`` execution
+# equivalent to ``python -m`` when launched from any working directory.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from jev_agent.paged_memory import MemoryPage, PagedMemoryIndex
 
 
