@@ -285,6 +285,17 @@ side effects. Its 21/22 decision accuracy includes the deliberately injected
 wrong page action and must not be compared directly with the normal 22/22 run.
 The report is `benchmarks/results/jev-decision-dense-serial-live-injected.json`.
 
+### Recovery-gate four-state matrix
+
+`benchmark_recovery_gate_matrix.py` is a credential-free manager-level control
+for four pages under `empty`, `wrong_page`, `stale`, and `correct_resident`
+states (16 cases). The gate blocked 12 invalid tool resolutions, refreshed
+stale revisions before page-in, and reached 100% page recovery, in-page
+selection, and end-to-end success. Resident peak was 2/2 and external effects
+were zero. The report is `benchmarks/results/recovery-gate-matrix-latest.json`.
+This confirms the runtime boundary, not Jev's retrieval or page-localization
+quality.
+
 ### Live Jev decision-dense smoke
 
 `benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions

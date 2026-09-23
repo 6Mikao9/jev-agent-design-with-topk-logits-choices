@@ -147,6 +147,10 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 随后用 `--inject-page-miss` 故意把首次文件页决策改成 `CLARIFY`，只检验 runtime 是否阻止空 resident 直接进入工具层。真实 Jev 运行记录 1 个 `OptionFault`、1 次 `page_recovery`，恢复调用返回 `PAGE:files`，随后 `files:read_file` 选对；`blocked_invalid_tool_calls=1`、`page_recovery_successes=1`、外部副作用仍为 0。由于首个错误是实验器故意注入，原始 22 步决策准确率为 21/22（95.5%）不应与正常复跑的 22/22 混为一谈。报告为 [jev-decision-dense-serial-live-injected.json](../benchmarks/results/jev-decision-dense-serial-live-injected.json)。相对预期：门控行为符合预期，且没有错误工具副作用；下一步再扩展到空页、错误页和 stale 页的矩阵。
 
+## Recovery gate 四状态矩阵
+
+新增 `benchmarks/benchmark_recovery_gate_matrix.py`，在不调用网络或真实 Jev 的控制实验中，将 files、calendar、database、browser 四个页分别置于 `empty`、`wrong_page`、`stale`、`correct_resident` 四种状态，共 16 cases。gate 在 12 个非正确 resident case 中全部阻断非法工具解析；stale 页先刷新 revision 再 page-in，16/16 页内选择正确、16/16 端到端成功，resident 峰值 2/2，外部副作用 0。报告为 [recovery-gate-matrix-latest.json](../benchmarks/results/recovery-gate-matrix-latest.json)。相对预期：机制结果符合预期，证明门控、stale refresh 和页内选择边界已打通；这是 manager 上界，不能替代真实 Jev 的页定位质量。
+
 ## Radix/trie 参数候选设计判断
 
 基数树适合把工具名、字段名、枚举值、路径片段和历史成功参数按共享前缀组织起来。它能减少候选描述和候选物化，并让 helper 同时预测互相独立的字段或预取下一层；候选仍需进入 Jev 的 OptionSpace，不能绕过 Jev 决策。对连续自由文本参数，基数树收益有限，应退回 schema/grammar validator 或普通 proposal。该方向已加入 roadmap，后续用参数 recall@K、非法参数率、候选物化时间、Jev 调用数、helper/网络 overlap 和副作用做验证；扩散 proposal 暂留为可选后续路线，当前小型 masked-diffusion 的质量边界不足以作为主线。
