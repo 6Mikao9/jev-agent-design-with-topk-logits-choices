@@ -36,6 +36,17 @@ Qwen3.8 的 top-1 token 在 Qwen3.5 top10 中的 8 个上下文里都被保留�
 
 这些为历史原型计时，不是公平模型对比：0.8B 使用全前缀 Transformers，27B 使用 SGLang HTTP 服务；答案长度不同，未进行重复暖机评测。0.8B 的原计时代码未显式同步 CUDA，helper 分项不能视为可靠 GPU 执行耗时。真实 Jev 延迟尚未测得。后续需要同步计时、相同推理栈和缓存策略。排名已经直接使用 raw-logit topk；生成候选仍需要主干网络和 LM head，不能只靠 LM head 推理。
 
+### 0.8B 原始 logits + KV cache 对照
+
+在远端 Docker 的空闲 GPU 2 上，用同一份 Qwen3.5-0.8B、同一上下文和 32 个 top-1 续写步，显式同步 CUDA 对比 full-prefix 与 `FastLogitsHelper`：
+
+| 路径 | 总耗时 | 吞吐 |
+| --- | ---: | ---: |
+| 每步重算完整前缀 | 2,541.25 ms | 12.59 tok/s |
+| 首次 prefill + 单 token KV decode | 694.00 ms | 46.11 tok/s |
+
+KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 序列 32/32 一致，按 full-prefix 总时间除以 KV decode 时间为 4.11 倍，按总时间为 3.66 倍。该数字只说明缓存和 raw-logit 排序的模型 forward 收益，不包含 Jev、网络或工具调用，也没有和 27B 做质量等价声明。可用 `benchmarks/benchmark_kv_cache.py` 重跑；结果原文件留在远端项目的 `benchmarks/results/`，模型权重未进入 Git。
+
 ## 已知限制与护栏
 
 依赖版本、记忆召回和 `CLARIFY/STOP_UNRESOLVED` 已有基础实现；结构化 state packet、`REVIEW` 通道和通用精确算术路由仍是拟议优化，尚无缓解收益实验。用户提供的 Context Rot / No Rationale 等描述作为待检验假设保留，尚未独立核实其来源或因果解释。详细说明见 [JEV_LIMITATIONS_AND_GUARDRAILS.md](JEV_LIMITATIONS_AND_GUARDRAILS.md)。
