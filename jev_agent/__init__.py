@@ -9,6 +9,7 @@ from .memory import DependencyIndex, MemoryBank, MemoryRecord
 from .memory_selection import MemorySelectionResult, TwoStageMemorySelector
 from .models import Candidate, ChoiceOption, ChoiceResult, TaskState
 from .option_space import OptionSpace, OptionSpaceRegistry, SpaceOption
+from .parameter_prior import ParameterCandidate, ParameterPrior, ParameterRecord
 from .orchestrator import JevAgentOrchestrator, OrchestratorResult
 from .paged_memory import (
     MemoryPage,
@@ -61,6 +62,9 @@ __all__ = [
     "OptionSpace",
     "OptionSpaceRegistry",
     "SpaceOption",
+    "ParameterCandidate",
+    "ParameterPrior",
+    "ParameterRecord",
     "JevAgentOrchestrator",
     "OrchestratorResult",
     "CompiledDecisionRule",

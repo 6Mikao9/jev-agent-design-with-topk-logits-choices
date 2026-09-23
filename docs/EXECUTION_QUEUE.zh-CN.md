@@ -93,3 +93,6 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 - 两阶段 memory control matrix 已完成无网络回放：单页/双页成功读取，无候选、读取超预算和 stale selection 均安全阻断；真实 Jev 多页概率与质量仍待跑。
 
 - 候选回退控制流已复跑并保存报告；当前结果仍是 scripted oracle 上界，真实 Jev 选择、top-(n-m) 接受和补救成本仍待测。
+### P1 参数先验（已完成）
+
+`ParameterPrior` 按工具、字段和阶段记录成功率与 revision，并按 exact-state → state-machine → semantic/lexical 三级检索生成候选。候选仅进入 `OptionSpace`，最终仍由 Jev/DecisionModel 选择；过期或 revision 不兼容记录会被过滤。这是工程优化，不是单独的新颖性主张。
