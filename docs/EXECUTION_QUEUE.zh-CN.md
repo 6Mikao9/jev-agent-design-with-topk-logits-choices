@@ -124,3 +124,5 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - 真实 Jev recovery action 已从 6 个扩展到 12 个受控 case，当前 12/12；下一步不再增加纯 action 分类规模，转向真实 retrieval→Jev→PAGE/REFINE→执行的闭环和失败案例。
 
 - 真实 Jev retrieval→recovery smoke 已完成 4/4 终态契约；期间发现并修复 refine 后父候选未移除的 runtime bug。下一步优先扩大为多页、多 fault、无 oracle locator 的 decision-dense workload，再测真实工具执行与长轨迹成本。
+
+- 24 步 decision-dense deterministic workload 已跑通：三类 resident/context 上限保持，PAGE/REFINE/ContextFault/stale/CLARIFY/STOP 均触发并恢复；下一步接入 live Jev action 和真实 retrieval，报告端到端成功与成本。

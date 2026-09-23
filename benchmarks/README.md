@@ -225,4 +225,12 @@ retrieval-to-recovery live smoke test, not a long trajectory or real tool-side-e
 benchmark.
 
 ### Decision-dense workload
-enchmark_decision_dense_workload.py replays a 24-step deterministic trajectory that exercises COMMIT, PAGE, REFINE, ContextFault, stale revision, CLARIFY, and STOP. It records per-step state, resident/context bounds, faults, recovery, simulated effects, latency, and cost. The output is enchmarks/results/decision-dense-workload-latest.json. This is an oracle/control-flow upper bound with zero external side effects; it does not measure Jev quality.
+`benchmark_decision_dense_workload.py` replays a 24-step deterministic trajectory that exercises COMMIT, PAGE, REFINE, ContextFault, stale revision, CLARIFY, and STOP. It records per-step state, resident/context bounds, faults, recovery, simulated effects, latency, and cost. The output is `benchmarks/results/decision-dense-workload-latest.json`. This is an oracle/control-flow upper bound with zero external side effects; it does not measure Jev quality.
+
+The 24-step workload was run remotely on 2026-09-24. It exercised 11 COMMIT,
+4 PAGE, 2 REFINE, 2 ContextFault, 1 stale revision, 1 CLARIFY and 3 STOP events.
+Resident bound was 4 with observed peak 4; context bound was 3 with observed peak
+3; it triggered 6 faults and 12 recoveries, with 11 simulated effects, zero
+external side effects and total cost 30.0 units. The raw JSON is kept locally at
+`benchmarks/results/decision-dense-workload-latest.json` and is an oracle/control
+flow baseline, not live Jev quality evidence.

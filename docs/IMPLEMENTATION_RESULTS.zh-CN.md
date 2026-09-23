@@ -112,3 +112,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 真实 Jev retrieval→recovery 闭环 smoke
 
 新增 `benchmarks/benchmark_jev_closed_loop.py`，把 live Jev action、`PagedMemoryIndex`/`TwoStageMemorySelector`、`VirtualOptionManager` 的 page-in/refine 和无副作用模拟执行串起来。首轮发现 `REFINE` 后父选项仍留在 resident set，导致第二次决策重复选择 `REFINE`；已修复为子页 materialize 后移除父候选，并加入回归测试。修复后四个 case（resident commit、missing-page recovery、coarse refine、ambiguous clarify）全部完成预期终态，3 个到达模拟执行，1 个安全澄清。报告为 [jev-closed-loop-fixed2.json](../benchmarks/results/jev-closed-loop-fixed2.json)。这仍是小型 smoke，不是长轨迹或真实工具副作用评测。
+
+## 24 步 decision-dense workload 控制基线
+
+远端运行 `benchmarks/benchmark_decision_dense_workload.py` 得到 24 步轨迹：11 次 COMMIT、4 次 PAGE、2 次 REFINE、2 次 ContextFault、1 次 stale revision、1 次 CLARIFY、3 次 STOP。resident 上限 4、观测峰值 4；context 上限 3、观测峰值 3；共 6 次 fault、12 次 recovery、11 次模拟副作用，外部副作用为 0，总成本 30.0 units。报告为 [decision-dense-workload-latest.json](../benchmarks/results/decision-dense-workload-latest.json)。这是 oracle/control-flow 基线，不代表真实 Jev 决策质量。
