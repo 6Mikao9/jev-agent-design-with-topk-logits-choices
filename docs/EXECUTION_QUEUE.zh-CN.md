@@ -172,6 +172,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - 22-step A/B/C 真实 Jev 串联已完成首轮与修复复跑：首轮 19/22（86.4%）暴露页选择失败后继续执行、以及 COMMIT 与 resident candidate 混在同一选项面的两个问题；修复后使用 lexical page directory、工具前置 coverage gate 和 control-only action surface，22/22，fault 4、recovery 13、模拟执行 4，resident/context 峰值 4/4 与 2/2，外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live.json` 与 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`。相对预期：正确率和机制边界好于首轮，平均 1.02 s/步仍高于离线 contract；先补显式错误页 recovery，再扩大 20–100 步。
 - 显式错误页 recovery 已做一次真实 Jev 故障注入：首次文件页故意返回 `CLARIFY`，随后工具前置 gate 触发 `OptionFault`，阻止空 resident 工具调用并重新选择 `PAGE:files`；页恢复和页内工具均成功，`blocked_invalid_tool_calls=1`、`page_recovery_successes=1`、外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live-injected.json`；21/22 是包含故意注入错误的诊断值，不能替代正常 22/22。下一步扩展 empty/wrong-page/stale-page/correct-page 四状态矩阵。
 - recovery gate 四状态控制矩阵已完成：4 页 × `empty/wrong_page/stale/correct_resident` 共 16 cases，12 次非法工具解析在 gate 层阻断，stale 页经 revision refresh 后恢复；页恢复、页内选择和端到端均 100%，resident 峰值 2/2，外部副作用 0。报告为 `benchmarks/results/recovery-gate-matrix-latest.json`。相对预期：manager 机制边界符合预期；仍需把同一矩阵接到真实 Jev，测 Jev 的页定位和恢复选择错误。
+- recovery gate 真实 Jev 四状态矩阵已完成：同样 4 页 × 4 状态 16 cases，Jev 只看 query、页摘要和当前页工具；12 个非 resident case 全部在工具选择前被阻断，页恢复、页内选择和端到端 100%，P50/P95 为 1,306.3/1,346.9 ms，resident 峰值 2/2，外部副作用 0。报告为 `benchmarks/results/recovery-gate-live-latest.json`。相对预期：在小目录、短 query 上达到预期；下一步扩大语义相似页、更多页和多跳错误恢复。
 
 
 

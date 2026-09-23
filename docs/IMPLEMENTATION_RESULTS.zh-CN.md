@@ -151,6 +151,8 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 新增 `benchmarks/benchmark_recovery_gate_matrix.py`，在不调用网络或真实 Jev 的控制实验中，将 files、calendar、database、browser 四个页分别置于 `empty`、`wrong_page`、`stale`、`correct_resident` 四种状态，共 16 cases。gate 在 12 个非正确 resident case 中全部阻断非法工具解析；stale 页先刷新 revision 再 page-in，16/16 页内选择正确、16/16 端到端成功，resident 峰值 2/2，外部副作用 0。报告为 [recovery-gate-matrix-latest.json](../benchmarks/results/recovery-gate-matrix-latest.json)。相对预期：机制结果符合预期，证明门控、stale refresh 和页内选择边界已打通；这是 manager 上界，不能替代真实 Jev 的页定位质量。
 
+同一 16-case 矩阵随后接入真实 Jev，脚本为 `benchmarks/benchmark_recovery_gate_live.py`。Jev 只接收自然语言 query、四个页摘要和当前 materialized page 的工具选项；target page/tool 只用于事后断言。真实运行中 12 个非 resident case 全部先被 gate 阻断，页恢复、页内选择和端到端均为 100%，`blocked_invalid_tool_calls=12`，resident 峰值 2/2，外部副作用 0；所有 case 总延迟 P50 1,306.3 ms、P95 1,346.9 ms。报告为 [recovery-gate-live-latest.json](../benchmarks/results/recovery-gate-live-latest.json)。相对预期：真实 Jev 在这个小页目录、短 query 矩阵上达到预期；这仍不能外推到更大页目录、语义相似干扰或多跳错误恢复。
+
 ## Radix/trie 参数候选设计判断
 
 基数树适合把工具名、字段名、枚举值、路径片段和历史成功参数按共享前缀组织起来。它能减少候选描述和候选物化，并让 helper 同时预测互相独立的字段或预取下一层；候选仍需进入 Jev 的 OptionSpace，不能绕过 Jev 决策。对连续自由文本参数，基数树收益有限，应退回 schema/grammar validator 或普通 proposal。该方向已加入 roadmap，后续用参数 recall@K、非法参数率、候选物化时间、Jev 调用数、helper/网络 overlap 和副作用做验证；扩散 proposal 暂留为可选后续路线，当前小型 masked-diffusion 的质量边界不足以作为主线。

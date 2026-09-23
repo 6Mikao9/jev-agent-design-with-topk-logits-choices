@@ -296,6 +296,15 @@ were zero. The report is `benchmarks/results/recovery-gate-matrix-latest.json`.
 This confirms the runtime boundary, not Jev's retrieval or page-localization
 quality.
 
+`benchmark_recovery_gate_live.py` runs the same 16 states through the live Jev
+Choice endpoint. Jev sees only the natural-language query, page summaries, and
+the selected page's tools; target IDs are evaluation-only. The run blocked all
+12 non-resident resolutions before tool choice, then achieved 100% page
+recovery, in-page selection, and end-to-end success with resident peak 2/2 and
+zero external side effects. Per-case total latency was P50 1,306.3 ms and P95
+1,346.9 ms. The report is `benchmarks/results/recovery-gate-live-latest.json`.
+This is a small live matrix, not a large-directory or multi-hop quality claim.
+
 ### Live Jev decision-dense smoke
 
 `benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions
