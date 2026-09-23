@@ -118,3 +118,5 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 ### P1 参数先验（已完成）
 
 `ParameterPrior` 按工具、字段和阶段记录成功率与 revision，并按 exact-state → state-machine → semantic/lexical 三级检索生成候选。候选仅进入 `OptionSpace`，最终仍由 Jev/DecisionModel 选择；过期或 revision 不兼容记录会被过滤。这是工程优化，不是单独的新颖性主张。
+
+- 第一轮真实 Jev recovery action benchmark 已完成：6 个受控 COMMIT/PAGE/REFINE/CLARIFY/STOP case 全部选对；下一步优先扩大到 missing detection、page localization、recovery success 分离的多 case 矩阵和真实执行闭环。

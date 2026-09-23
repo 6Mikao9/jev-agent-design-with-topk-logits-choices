@@ -191,3 +191,14 @@ completed 2/6 oracle cases (33.33%); explicit Top-k fallback and always-Top-k
 completed 5/6 (83.33%). Explicit fallback used 15.67 helper calls on average,
 versus 20.67 for always-Top-k. The chooser and helper know the scripted gold
 answer, so these are routing upper bounds rather than Jev or model quality.
+
+### Live Jev recovery action control
+
+`benchmark_jev_recovery.py` runs six controlled action cases through the direct
+TypeSafe Choice adapter: one `COMMIT`, two `PAGE`, one `REFINE`, one `CLARIFY`,
+and one `STOP`. The 2026-09-24 report is
+`benchmarks/results/jev-recovery-live.json`; it contains no credential. All 6
+responses matched the expected action, with mean request latency 1,973.5 ms and
+an observed range of 795.0–4,214.9 ms. This is a small controlled action
+classification result, not evidence of end-to-end agent success, missing-page
+localization, or long-trajectory stability.

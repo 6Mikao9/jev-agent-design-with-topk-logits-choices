@@ -100,3 +100,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 候选回退控制流复跑
 
 2026-09-24 在远端重新运行 `benchmarks/run_synthetic.py`，报告副本为 `benchmarks/results/synthetic-control-flow-latest.json`，远端原始文件为 `/tmp/synthetic-control-flow-latest.json`。6 个脚本场景中，proposal-only 完成 2/6（33.33%），显式 Top-k fallback 和 always-Top-k 都完成 5/6（83.33%）；显式 fallback 平均 helper 调用 15.67 次，always-Top-k 为 20.67 次。chooser/helper 读取脚本金标准，因此这些是控制流上界，不是 Jev 或模型质量结果。
+
+## 第一轮真实 Jev recovery action benchmark
+
+2026-09-24 使用直连 TypeSafe Choice 运行 `benchmarks/benchmark_jev_recovery.py` 的 6 个受控 case：resident valid→`COMMIT`、target missing→`PAGE`、coarse option→`REFINE`、ambiguous pages→`CLARIFY`、stale revision→`STOP`、schema gap with page available→`PAGE`。6/6 选择与预期一致；平均 Jev 请求耗时约 1,973.5 ms，范围约 795.0–4,214.9 ms。报告为 [jev-recovery-live.json](../benchmarks/results/jev-recovery-live.json)，不含凭据。该结果只验证受控 action contract，不代表 page localization、端到端执行成功或长轨迹稳定性。
