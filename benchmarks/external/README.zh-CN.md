@@ -8,7 +8,7 @@
 | BrowserGym | https://github.com/ServiceNow/BrowserGym | `9e779f087de9a65668b6974d11f9ce9816026e96` | Apache-2.0（见目录 LICENSE） | 已下载 shallow clone | 2.7 MB | 提供浏览器任务环境；WorkArena 作为 BrowserGym 的任务生态使用，需要浏览器和外部服务配置。 |
 | tau-bench | https://github.com/sierra-research/tau-bench | `59a200c6d575d595120f1cb70fea53cef0632f6b` | MIT（见目录 LICENSE） | 已下载 shallow clone | 59.8 MB | 工具调用与状态变化任务；运行前按 README 安装依赖并配置所需服务。 |
 | ToolBench | https://github.com/OpenBMB/ToolBench | `d56fdd89faf8c91fa135090b212bb9057ee5cfc2` | Apache-2.0（见目录 LICENSE） | 已下载 shallow clone | 15.1 MB | 大工具空间和 API 调用压力测试；这里只保留源码入口，未下载模型权重或完整大数据。 |
-| BFCL | https://github.com/ gorilla-llm | — | 已有本项目 `benchmarks/data/bfcl-v4-exec-simple` | 未重复下载 | — | 已有最小执行集和结果；后续可作为补充基线。 |
+| BFCL | https://github.com/gorilla-llm | — | 已有本项目 `benchmarks/data/bfcl-v4-exec-simple` | 未重复下载 | — | 已有最小执行集和结果；后续可作为补充基线。 |
 
 ## 下载约束
 
@@ -16,3 +16,4 @@
 - 不把外部源码、大数据、缓存、模型权重加入 Git。运行生成物放在 `benchmarks/results/` 或外部临时目录。
 - BrowserGym/WorkArena、AgentBench 部分任务和 tau-bench 可能依赖浏览器、数据库、模拟服务或 API；本项目暂不声称已经可直接复现。
 - 推荐先做适配层和小规模 smoke test，再申请完整数据或服务。
+
