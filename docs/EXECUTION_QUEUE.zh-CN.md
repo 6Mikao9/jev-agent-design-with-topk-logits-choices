@@ -125,4 +125,6 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - 真实 Jev retrieval→recovery smoke 已完成 4/4 终态契约；期间发现并修复 refine 后父候选未移除的 runtime bug。下一步优先扩大为多页、多 fault、无 oracle locator 的 decision-dense workload，再测真实工具执行与长轨迹成本。
 
-- 24 步 decision-dense deterministic workload 已跑通：三类 resident/context 上限保持，PAGE/REFINE/ContextFault/stale/CLARIFY/STOP 均触发并恢复；下一步接入 live Jev action 和真实 retrieval，报告端到端成功与成本。
+- 24 步 decision-dense deterministic workload 已跑通：三类 resident/context 上限保持，PAGE/REFINE/ContextFault/stale/CLARIFY/STOP 均触发并恢复；live Jev action 已接入 8 步 smoke，后续继续扩大真实 retrieval 和长轨迹成本评测。
+
+- 8 步 live Jev decision-dense smoke 已完成：真实 Jev 选择 8/8 个预期动作，覆盖 COMMIT/PAGE/REFINE/CLARIFY/STOP、页恢复和冷上下文恢复；resident/context 峰值分别为 2/4 和 2/2。报告为 `benchmarks/results/jev-decision-dense-live.json`。相对预期：动作正确率更好，但平均 7.64 s 且有 11.6–19.4 s 长尾，延迟更差；下一步优先扩大多页、多 fault、无 oracle locator 的真实 retrieval→Jev→recovery workload，并记录 P50/P95。

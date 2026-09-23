@@ -234,3 +234,19 @@ Resident bound was 4 with observed peak 4; context bound was 3 with observed pea
 external side effects and total cost 30.0 units. The raw JSON is kept locally at
 `benchmarks/results/decision-dense-workload-latest.json` and is an oracle/control
 flow baseline, not live Jev quality evidence.
+
+### Live Jev decision-dense smoke
+
+`benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions
+through the real Jev Choice endpoint and the actual `VirtualOptionManager` and
+`ContextResidencyManager`: COMMIT, missing-page PAGE, post-page COMMIT, coarse
+REFINE, post-refine COMMIT, ambiguous CLARIFY, stale STOP, and cold-context PAGE.
+The 2026-09-24 direct run selected all eight expected actions (8/8, 100%),
+performed three bounded recoveries and three simulated effects, and kept the
+resident/context peaks at 2/4 and 2/2. Mean Jev request latency was 7,641.5 ms;
+the 11.6–19.4 s outliers show that online latency is still highly variable. The
+credential-free report is kept locally at
+`benchmarks/results/jev-decision-dense-live.json`. This is better than the
+minimum smoke expectation for action correctness, while the latency is worse
+than a production target and the sample is too small to claim long-trajectory
+quality or real tool-side-effect success.

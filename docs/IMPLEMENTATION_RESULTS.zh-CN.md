@@ -116,3 +116,9 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 24 步 decision-dense workload 控制基线
 
 远端运行 `benchmarks/benchmark_decision_dense_workload.py` 得到 24 步轨迹：11 次 COMMIT、4 次 PAGE、2 次 REFINE、2 次 ContextFault、1 次 stale revision、1 次 CLARIFY、3 次 STOP。resident 上限 4、观测峰值 4；context 上限 3、观测峰值 3；共 6 次 fault、12 次 recovery、11 次模拟副作用，外部副作用为 0，总成本 30.0 units。报告为 [decision-dense-workload-latest.json](../benchmarks/results/decision-dense-workload-latest.json)。这是 oracle/control-flow 基线，不代表真实 Jev 决策质量。
+
+## 真实 Jev decision-dense smoke
+
+新增 `benchmarks/benchmark_jev_decision_dense_live.py`，把真实 Jev Choice 接口接到一个 8 步、状态逐步变化的本地 workload：resident `COMMIT`、缺失页 `PAGE`、恢复后 `COMMIT`、粗粒度候选 `REFINE`、细化后 `COMMIT`、歧义 `CLARIFY`、stale `STOP` 和冷上下文 `PAGE`。2026-09-24 直连运行得到 8/8（100%）动作正确，3 次受控 recovery，3 次无副作用模拟执行；resident 峰值 2/4、context 峰值 2/2。平均 Jev 请求耗时 7,641.5 ms，其中 11.6–19.4 s 的长尾明显。报告为 [jev-decision-dense-live.json](../benchmarks/results/jev-decision-dense-live.json)，不含凭据。
+
+相对预期：动作正确率比 smoke 最低预期更好，说明真实 Jev 能穿过这条小型 `OptionSpace → Fault → PAGE/REFINE → recovery` 闭环；延迟比生产目标更差，且样本很小，不能外推到长轨迹、复杂检索或真实工具副作用。
