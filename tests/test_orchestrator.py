@@ -7,13 +7,14 @@ from jev_agent.agent import ToolDefinition
 
 
 class OrchestratorChooser:
-    def __init__(self):
+    def __init__(self, memory_choice=None):
         self.states = []
+        self.memory_choice = memory_choice
 
     def choose(self, *, state, instructions, options):
         self.states.append(state)
         if any(option.option_id.startswith("PAGE_") for option in options):
-            choice = next(option.option_id for option in options if option.option_id.startswith("PAGE_"))
+            choice = self.memory_choice or next(option.option_id for option in options if option.option_id.startswith("PAGE_"))
         elif any(option.option_id.startswith("TOP_") for option in options):
             choice = next(option.option_id for option in options if option.option_id.startswith("TOP_"))
         else:
@@ -50,6 +51,25 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(result.memory.selected_ids, ("plan",))
         self.assertEqual(len(result.trace.edges()), 2)
         self.assertIn("leave at 08:00", chooser.states[-1])
+
+    def test_memory_clarification_blocks_tool_side_effect(self):
+        index = PagedMemoryIndex()
+        index.upsert(MemoryPage("plan", "Friday departure plan", "leave at 08:00"))
+        executed = []
+        tool = ToolDefinition(
+            "file.write", "write", "1",
+            {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"], "additionalProperties": False},
+            lambda arguments: executed.append(arguments),
+        )
+        draft = Candidate("draft", "file.write", {"path": "notes.txt"}, "replay", 1, "1")
+        chooser = OrchestratorChooser(memory_choice="CLARIFY")
+        runtime = JevAgentOrchestrator(chooser, memory_index=index)
+        try:
+            result = runtime.run(state=TaskState("task-2", "follow the departure plan"), tool=tool, drafts=[draft], memory_context="Friday departure")
+        finally:
+            runtime.close()
+        self.assertEqual(result.status, "clarification_required")
+        self.assertEqual(executed, [])
 
 
 if __name__ == "__main__":

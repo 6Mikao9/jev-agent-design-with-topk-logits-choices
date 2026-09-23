@@ -97,6 +97,42 @@ class JevAgentOrchestrator:
                     success=memory_result.status in {"no_candidates", "no_memory", "stopped"},
                     error=memory_result.reason,
                 )
+            if memory_result.status in {
+                "clarification_required",
+                "stopped",
+                "context_budget_exceeded",
+                "invalid_distribution",
+                "read_budget_exceeded",
+                "stale_selection",
+                "read_denied",
+            }:
+                blocked_status = (
+                    "clarification_required"
+                    if memory_result.status == "clarification_required"
+                    else "unresolved"
+                )
+                blocked = AgentResult(
+                    blocked_status,
+                    recovery=f"memory gate: {memory_result.status} {memory_result.reason}".strip(),
+                )
+                self.trace.record(
+                    source="tool.select",
+                    target=blocked_status,
+                    label="blocked_by_memory",
+                    tool_name=tool.name,
+                    success=False,
+                    error=blocked.recovery,
+                    schema_version=tool.schema_version,
+                    dependency_versions=effective_state.dependency_versions,
+                    guard=f"task_revision == {effective_state.revision}",
+                )
+                return OrchestratorResult(
+                    status=blocked.status,
+                    agent=blocked,
+                    memory=memory_result,
+                    trace=self.trace,
+                    error_summaries=self.error_queue.drain(),
+                )
 
         agent_result = Agent(self.chooser).run(
             state=effective_state,
