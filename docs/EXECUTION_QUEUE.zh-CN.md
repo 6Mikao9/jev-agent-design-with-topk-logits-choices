@@ -87,3 +87,5 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 - **研究与发布**：相关工作/新颖性继续以“组合接口候选”表述；论文实验保持 TODO，模型权重、数据集和凭据不进 Git。
 
 本审计还发现两类容易混淆的表述，已统一修正：同步 VirtualOptionManager 已有机制实现，但统一生产调度器、异步 prefetch、学习型 replacement、真实 Jev scaling 仍未完成；固定 resident 在合成缺失目标实验中的 0% 是该策略的任务成功率，不是系统总体指标，也不代表 Jev 或 runtime 已“爆炸”。
+
+- adversarial lexical 控制已补上：正文-only、摘要改写和 32 个 decoy 页都会漏失，验证了当前粗筛的已知边界；语义/两阶段 Jev 对照仍待跑。

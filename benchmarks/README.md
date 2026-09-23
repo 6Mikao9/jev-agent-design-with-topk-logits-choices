@@ -168,3 +168,11 @@ the strategy. `success_rate` is their end-to-end product for this benchmark. The
 0% fixed-resident result at a large logical size is an intentional coverage lower bound,
 not a claim that Jev or the runtime has 0% task accuracy. `initial_page_ins` is setup
 cost; `recovery_page_ins` is the additional paging work.
+
+`benchmark_needle_adversarial.py` adds negative controls. With the target fixed at
+the last of 100 pages and `limit=16`, the exact-summary case hit, while a target
+whose fact appeared only in content and a paraphrased summary both missed. With
+32 pages containing the same query terms before the target, the target also missed
+because of the candidate limit. These are expected lexical-prefilter failure modes
+and motivate summary quality, semantic retrieval and adaptive materialization work;
+they do not measure Jev selection accuracy.
