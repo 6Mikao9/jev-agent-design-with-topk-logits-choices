@@ -145,3 +145,7 @@ Run `python benchmarks/benchmark_needle_memory.py --pages 100 --needle-position 
 ### Two-stage Jev memory replay
 
 Run `python benchmarks/benchmark_memory_jev.py --output /tmp/memory-jev.json` to replay the page-summary ranking and `TOP_2/4/8` count choice without a network key. This only checks selector wiring and budget/version handling. To call the real Choice endpoint, set `TYPESAFE_API_KEY` or `JEV_API_KEY` in the process environment and add `--live-jev`; credentials are never accepted as command-line arguments or written to the output.
+
+### Virtual Option Space scaling mechanism baseline
+
+Run `python benchmarks/benchmark_virtual_option_scaling.py --output /tmp/virtual-option-scaling.json` for logical spaces of 10/100/1K/10K/100K options and resident bounds `K=8/16/32`. The benchmark measures deterministic page-in, `OptionFault`, LRU eviction, stable-ID resolution and the resident bound. It makes no Jev calls and is not a scaling result for task quality; follow-up experiments must add candidate deletion, Jev decisions, refinement and recovery-cost measurements.
