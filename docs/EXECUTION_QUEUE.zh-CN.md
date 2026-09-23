@@ -128,3 +128,5 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - 24 步 decision-dense deterministic workload 已跑通：三类 resident/context 上限保持，PAGE/REFINE/ContextFault/stale/CLARIFY/STOP 均触发并恢复；live Jev action 已接入 8 步 smoke，后续继续扩大真实 retrieval 和长轨迹成本评测。
 
 - 8 步 live Jev decision-dense smoke 已完成：真实 Jev 选择 8/8 个预期动作，覆盖 COMMIT/PAGE/REFINE/CLARIFY/STOP、页恢复和冷上下文恢复；resident/context 峰值分别为 2/4 和 2/2。报告为 `benchmarks/results/jev-decision-dense-live.json`。相对预期：动作正确率更好，但平均 7.64 s 且有 11.6–19.4 s 长尾，延迟更差；下一步优先扩大多页、多 fault、无 oracle locator 的真实 retrieval→Jev→recovery workload，并记录 P50/P95。
+
+- 延迟长尾诊断已完成：fresh 直连分段显示建连约 0.32–0.49 s，响应体约 0.02 ms，主要等待在 response-header/TTFB（0.38–6.28 s，另有一次 30 s timeout）；持久连接对照平均 635.7 ms、P95 823.5 ms。相对预期：确认连接池能明显改善固定开销，但服务端/跨境路径长尾仍存在。后续优先接入连接池与 TTFB/request-id 观测，再用高置信 fast path、调用合并和 helper/网络 overlap 减少串行 Jev 次数。

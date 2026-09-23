@@ -250,3 +250,18 @@ credential-free report is kept locally at
 minimum smoke expectation for action correctness, while the latency is worse
 than a production target and the sample is too small to claim long-trajectory
 quality or real tool-side-effect success.
+
+### Jev latency breakdown
+
+`benchmark_jev_latency_breakdown.py` separates direct HTTPS connection setup,
+time to response headers (TTFB plus gateway/model waiting), and response-body
+download. With a valid key on 2026-09-24, a fresh-connection run completed 7/8
+calls: connection setup was 0.32–0.49 s, response bodies took about 0.02 ms,
+but header wait ranged from 0.38 s to 6.28 s and one call timed out at 30 s.
+The credential-free report is
+`benchmarks/results/jev-latency-breakdown-fresh.json`. A persistent-connection
+control completed 8/8 with mean 635.7 ms and P95 823.5 ms; that report is
+`benchmarks/results/jev-latency-breakdown-valid.json`. This attributes the
+original 7.64 s mean primarily to variable cross-network/API gateway or Jev
+service waiting, with per-call TLS setup as a smaller fixed cost; it is not a
+local JSON or response-download bottleneck.

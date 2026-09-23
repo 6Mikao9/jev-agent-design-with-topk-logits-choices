@@ -119,6 +119,12 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 ## 真实 Jev decision-dense smoke
 
-新增 `benchmarks/benchmark_jev_decision_dense_live.py`，把真实 Jev Choice 接口接到一个 8 步、状态逐步变化的本地 workload：resident `COMMIT`、缺失页 `PAGE`、恢复后 `COMMIT`、粗粒度候选 `REFINE`、细化后 `COMMIT`、歧义 `CLARIFY`、stale `STOP` 和冷上下文 `PAGE`。2026-09-24 直连运行得到 8/8（100%）动作正确，3 次受控 recovery，3 次无副作用模拟执行；resident 峰值 2/4、context 峰值 2/2。平均 Jev 请求耗时 7,641.5 ms，其中 11.6–19.4 s 的长尾明显。报告为 [jev-decision-dense-live.json](../benchmarks/results/jev-decision-dense-live.json)，不含凭据。
+新增 `benchmarks/benchmark_jev_decision_dense_live.py`，把真实 Jev Choice 接口接到一个 8 步、状态逐步变化的本地 workload：resident `COMMIT`、缺失页 `PAGE`、恢复后 `COMMIT`、粗粒度候选 `REFINE`、细化后 `COMMIT`、歧义 `CLARIFY`、stale `STOP` 和冷上下文 `PAGE`。2026-09-24 直连运行得到 8/8（100%）动作正确，3 次受控 recovery，3 次无副作用模拟执行；resident 峰值 2/4、context 峰值 2/2。首轮平均 Jev 请求耗时 7,641.5 ms，其中 11.6–19.4 s 的长尾明显；记录 token 数后再次运行得到平均 2,535.2 ms，最大 5,974.9 ms，输入 433–484 tokens、输出 56–75 tokens，动作仍为 8/8。报告为 [jev-decision-dense-live.json](../benchmarks/results/jev-decision-dense-live.json) 和 [jev-decision-dense-live-rerun.json](../benchmarks/results/jev-decision-dense-live-rerun.json)，均不含凭据。
 
-相对预期：动作正确率比 smoke 最低预期更好，说明真实 Jev 能穿过这条小型 `OptionSpace → Fault → PAGE/REFINE → recovery` 闭环；延迟比生产目标更差，且样本很小，不能外推到长轨迹、复杂检索或真实工具副作用。
+相对预期：动作正确率比 smoke 最低预期更好；延迟比生产目标更差且跨运行波动很大，不能外推到长轨迹、复杂检索或真实工具副作用。
+
+## Jev 延迟分解与长尾诊断
+
+新增 `benchmarks/benchmark_jev_latency_breakdown.py`，用直连 HTTPS 分开记录连接建立、收到响应头前的等待（TTFB 加 API 网关/服务端等待）和响应体读取。有效 key 的 fresh-connection 运行完成 7/8 个请求：每次 DNS/TCP/TLS 建连约 0.32–0.49 s，响应体读取约 0.02 ms，但响应头等待从 0.38 s 到 6.28 s 不等，另有一次 30 s 读取超时。报告为 [jev-latency-breakdown-fresh.json](../benchmarks/results/jev-latency-breakdown-fresh.json)。同一 payload 的持久连接对照 8/8 成功，平均 635.7 ms、P95 823.5 ms、最大 1,041.9 ms，报告为 [jev-latency-breakdown-valid.json](../benchmarks/results/jev-latency-breakdown-valid.json)。
+
+结论：7.64 s 的首轮均值主要来自跨境 HTTPS 路径和 API 网关/服务端排队或推理的 TTFB 长尾；新建 TLS 连接是每次约 0.3–0.5 s 的次要固定成本。响应体、JSON 解析、本机 GPU、helper 和应用层重试都不能解释 4–19 s 的长尾：客户端没有应用层重试，payload 只有约 433–484 input tokens，body 读取约 0.02 ms。工程上优先使用带连接池的直连 HTTP 客户端（保留 `trust_env=False` 和 TLS 校验）、记录 request-id/TTFB、设置超时与重连；算法上减少串行 Jev 调用，在高置信稳定状态走本地安全 fast path，只在 fault、分叉、低置信或 `END_DIALOGUE` 节点调用 Jev，并把 helper 预取与网络请求重叠。持久连接对照相对预期明显更好，但服务端 TTFB 仍需单独优化或换低延迟区域/端点。

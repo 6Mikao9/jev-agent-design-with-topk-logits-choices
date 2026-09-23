@@ -46,6 +46,9 @@ def choose(chooser: TypeSafeJevChooser, state: str, options: list[ChoiceOption])
         "choice": result.choice,
         "probabilities": result.probabilities,
         "confidence": result.confidence,
+        "model": result.model,
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
         "latency_ms": round(result.latency_ms or (perf_counter() - started) * 1000, 3),
     }
 
@@ -115,6 +118,9 @@ def run(chooser: TypeSafeJevChooser) -> dict:
             "selected": selected,
             "correct": selected == expected,
             "confidence": decision["confidence"],
+            "model": decision["model"],
+            "input_tokens": decision["input_tokens"],
+            "output_tokens": decision["output_tokens"],
             "latency_ms": decision["latency_ms"],
             "resident_count": len(manager.resident_options()),
             "resident_bound": manager.max_resident,
