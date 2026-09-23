@@ -12,6 +12,7 @@
 - `DecisionModel`、Replay 和 Oracle backend 适配器已加入代码，用于替换 Jev 和做能力上界实验；真实 backend capability scaling 仍待跑。
 - synthetic backend capability/page-recovery 基线已跑通；真实 Jev、多 backend 能力曲线和 RecoveryRate 仍待跑。
 - 新增 Runtime Governor、字段级参数 prior、adaptive set materialization 和安全包络设计；目前均为计划/假设，没有伪造实验结果。
+- lexical 超远捞针矩阵已完成首轮 18/18 精确词命中控制；语义干扰、摘要缺失、多针和两阶段 Jev 对照仍待跑。
 
 ## 已完成的基础事项
 
