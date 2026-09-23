@@ -11,6 +11,7 @@
 - arXiv 草稿已放入 `paper/main.tex`，实验表全部保留为 TODO/计划；当前环境没有 `pdflatex`，未生成 PDF。
 - `DecisionModel`、Replay 和 Oracle backend 适配器已加入代码，用于替换 Jev 和做能力上界实验；真实 backend capability scaling 仍待跑。
 - synthetic backend capability/page-recovery 基线已跑通；真实 Jev、多 backend 能力曲线和 RecoveryRate 仍待跑。
+- 新增 Runtime Governor、字段级参数 prior、adaptive set materialization 和安全包络设计；目前均为计划/假设，没有伪造实验结果。
 
 ## 已完成的基础事项
 
@@ -39,14 +40,19 @@
 10. **工具生态适配**：在隔离环境中挑选少量热门 agent 工具或框架，保留出处和许可证范围，转成 Jev 可选的安全 schema；目前只有本地工具目录和 MCP 形状描述，没有完整生态接入。
 11. **状态机闭环**：把 trace 图、错误摘要、schema/dependency guard 接入实际运行；对稳定边做回放、漂移检测和人工审核，必要时导出只读决策图，不能直接自动执行未经验证的规则。
 12. **公开 agent benchmark**：在隔离环境完成 BFCL 官方可执行评测，并补充 tau2/tau3、API-Bank 或同等多轮工具任务；分别报告工具正确率、错误副作用、修复率、Jev/helper 调用数、成本和 P50/P95 延迟。
+13. **字段级参数 prior/case memory**：按 `(tool, field, state phase, semantic neighborhood)` 建立历史成功参数索引；与 schema/environment 候选合并成 `ArgumentOptionSpace`，只生成候选并交给 Jev 决策，不隐式绕过决策模型。先做 exact-state → state-machine match → semantic match 三级查找，评估参数构造步数、REFINE fault、延迟和错误副作用。该机制标为工程优化，相关的 case reuse/tool cache 已有近邻工作。
+14. **Runtime Governor（计划）**：输入完整 Jev 分布、熵、margin、候选规模、风险、成本、fault/history/budget/retrieval 特征，输出 `COMMIT/PAGE/EXPAND/REFINE/RETRIEVE/FALLBACK/CLARIFY`。以期望效用或边际 value-of-information 选择动作，不写死单一概率阈值；先用离线反事实标注，再比较 contextual bandit/offline RL，暂不把 PPO 作为首选。
+15. **Adaptive set materialization（计划）**：根据当前状态选择值得 materialize 的最小 page subset，估计 `ΔV(page)=V(S∪page)-V(S)` 与成本的关系；比较固定 top-p、固定 top-k 和自适应集合。该方向与 value-based retrieval stopping 有关，作用对象扩大到整个 OptionSpace 变换，不能宣称单点原创。
+16. **Learned Governor 安全层（计划）**：用 learned controller 负责效率，用 conformal/calibrated safety envelope 限制高风险 COMMIT；校准不足时只能 PAGE/REFINE/FALLBACK/CLARIFY。验收包括风险覆盖率、错误提交率、拒绝率、额外延迟和分布外状态。
+17. **Candidate proposer 接口（计划）**：扩散模型、small AR、retriever、compiler 和历史 prior 都实现同一 proposer 接口；扩散模型只作为并行候选生成器，不作为论文 headline 或决策者。评估 proposal recall、Jev 选择成本和失败回退。
 
 ## P2：记忆系统和工程化扩展
 
-13. **分页记忆长期运行**：实现约 200 个一级目录、多级父页、原始子页回溯、摘要版本、LRU 只作排序/淘汰信号，以及向量/BM25 混合 RAG；专门测低频旧事实和父页合并造成的事实损失。
-14. **上下文区域预算**：把任务核心、明确读取记忆、最近记忆、工具扩展、预测 proposal、错误/trace 分成独立预算，实现工具翻页、默认参数和最近成功历史。
-15. **记忆评测消融**：测粗筛漏失率、`recall@M`、最终 `precision@K`、关键事实覆盖率、选择稳定性、校准误差、澄清率、读取字节和分阶段延迟；缓存命中率只作为成本指标。
-16. **本地下载/传送 fallback**：整理不走代理的镜像下载、校验、断点续传、传到远端项目目录和本地临时权重清理脚本；不把权重或凭据写入仓库。
-17. **远端项目清理**：在确认文件归属后，清理 Docker 内无关旧项目，保留其文档；操作范围限定在 `/home/liuyuntao/jev-agent-prototype`，不碰共享工作空间。
+18. **分页记忆长期运行**：实现约 200 个一级目录、多级父页、原始子页回溯、摘要版本、LRU 只作排序/淘汰信号，以及向量/BM25 混合 RAG；专门测低频旧事实和父页合并造成的事实损失。
+19. **上下文区域预算**：把任务核心、明确读取记忆、最近记忆、工具扩展、预测 proposal、错误/trace 分成独立预算，实现工具翻页、默认参数和最近成功历史。
+20. **记忆评测消融**：测粗筛漏失率、`recall@M`、最终 `precision@K`、关键事实覆盖率、选择稳定性、校准误差、澄清率、读取字节和分阶段延迟；缓存命中率只作为成本指标。
+21. **本地下载/传送 fallback**：整理不走代理的镜像下载、校验、断点续传、传到远端项目目录和本地临时权重清理脚本；不把权重或凭据写入仓库。
+22. **远端项目清理**：在确认文件归属后，清理 Docker 内无关旧项目，保留其文档；操作范围限定在 `/home/liuyuntao/jev-agent-prototype`，不碰共享工作空间。
 
 ## P3：论文和新颖性核验
 
