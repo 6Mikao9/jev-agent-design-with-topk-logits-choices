@@ -104,3 +104,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 第一轮真实 Jev recovery action benchmark
 
 2026-09-24 使用直连 TypeSafe Choice 运行 `benchmarks/benchmark_jev_recovery.py` 的 6 个受控 case：resident valid→`COMMIT`、target missing→`PAGE`、coarse option→`REFINE`、ambiguous pages→`CLARIFY`、stale revision→`STOP`、schema gap with page available→`PAGE`。6/6 选择与预期一致；平均 Jev 请求耗时约 1,973.5 ms，范围约 795.0–4,214.9 ms。报告为 [jev-recovery-live.json](../benchmarks/results/jev-recovery-live.json)，不含凭据。该结果只验证受控 action contract，不代表 page localization、端到端执行成功或长轨迹稳定性。
+
+## 真实 Jev recovery action 第二轮
+
+将受控 action cases 扩展到 12 个后，2026-09-24 得到 COMMIT 1/1、PAGE 4/4、REFINE 2/2、CLARIFY 2/2、STOP 3/3，混淆矩阵无误选。平均请求耗时 2,097.8 ms，中位数 1,156.0 ms，范围 856.6–4,428.3 ms。报告为 [jev-recovery-live-12.json](../benchmarks/results/jev-recovery-live-12.json)。它仍只测 Jev 是否遵守受控 runtime action contract，没有执行工具副作用，也没有测 page localization 或长轨迹稳定性。

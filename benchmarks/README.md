@@ -202,3 +202,11 @@ responses matched the expected action, with mean request latency 1,973.5 ms and
 an observed range of 795.0–4,214.9 ms. This is a small controlled action
 classification result, not evidence of end-to-end agent success, missing-page
 localization, or long-trajectory stability.
+
+`benchmark_jev_recovery.py` now contains 12 controlled cases. The second live run
+(2026-09-24) returned 12/12 expected actions: COMMIT 1/1, PAGE 4/4, REFINE 2/2,
+CLARIFY 2/2, STOP 3/3. Mean request latency was 2,097.8 ms, median 1,156.0 ms,
+and the observed range was 856.6–4,428.3 ms. The JSON report is kept locally at
+`benchmarks/results/jev-recovery-live-12.json` and is credential-free. This is
+still action-contract classification; no tool side effect or page localization
+was executed.
