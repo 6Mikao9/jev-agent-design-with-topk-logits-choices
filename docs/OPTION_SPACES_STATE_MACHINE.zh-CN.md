@@ -106,3 +106,10 @@ Mermaid `stateDiagram-v2`，统计成功/失败边，并只编译达到观察次
 8. 汇总论文级指标、失败案例、许可证和可复现实验配置。
 
 每项都要同时记录质量、延迟、调用次数、上下文字节、错误副作用和是否使用真实 Jev。没有真实 Jev 的运行只能标为 proxy/oracle，不能写成系统能力证明。
+
+## 定位收敛（2026-09-24）
+
+状态机的主线是 `Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。`PAGE/EXPAND` 增加同粒度覆盖，`REFINE` 降低粒度；覆盖不足记为 OptionFault，粒度不足记为 RefineFault，恢复动作统一为 `EXPAND_K/BACKTRACK/REPROPOSE/LOOKUP/CLARIFY/STOP/FINISH`。helper logits 只是 proposal。相关单点已有 prior art，研究贡献候选是 Jev-native runtime 的组合，仍待实验验证。
+
+实验应使用逻辑空间 10/100/1K/10K/100K、resident K=8/16/32，并报告 RecoveryRate、coverage、cost、latency、state errors、side effects；BFCL coverage 不等于 Jev accuracy。VirtualOptionManager、正式 fault 类型与真实 paging/replacement 的基础原型正在实现；异步 prefetch、完整 replacement policy 与 scaling benchmark 尚未实现。
+

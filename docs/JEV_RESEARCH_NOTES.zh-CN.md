@@ -31,3 +31,10 @@ Jev 不需要优化 KV cache 命中率；缓存可降低 helper forward 成本�
 ## 失败边界
 
 需要明确记录：关键页未进入粗选池、摘要遗漏冲突、概率分布不校准、stale/revision 变化、权限拒绝、请求或读取预算耗尽、扩散乱码/重复、工具 schema 漂移，以及真实 Jev 与 proxy 的差异。任何未完成的实验都应标记为设计或待验证，不能把文档中的目标、伪代码或局部测试扩写成端到端结果。
+
+## 定位收敛与实验主线（2026-09-24）
+
+将项目表述为面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。PAGE/EXPAND 改变 coverage，REFINE 改变 resolution；helper logits 仅提出候选，Jev 保留最终控制权。Top-k helper、fallback、confidence cascade、speculative decoding、FUDGE/GeDi、reward-guided decoding、Pydantic AI Jev fallback 均有先例，不能单独 claim 新颖。
+
+主实验：逻辑空间 10/100/1K/10K/100K，resident K=8/16/32；删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、+EXPAND_K、+BACKTRACK/LOOKUP/CLARIFY。记录 RecoveryRate、coverage、cost、latency、state errors、side effects；BFCL coverage 只代表 candidate availability。当前实现边界仍是既有 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace；VirtualOptionManager、OptionFault/RefineFault 与基础 page-in/out/revision/refine 原型正在实现；异步 prefetch、完整 replacement policy 与 scaling benchmark 待实现。
+

@@ -1,4 +1,11 @@
-# Jev 原生 Agent 系统设计
+
+## 收敛后的研究定位（2026-09-24）
+
+本项目是面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。`PAGE/EXPAND` 增加候选覆盖，`REFINE` 降低候选粒度（完整 candidate → field → fragment → token）；Jev 始终做最终选择，helper logits 只是 refinement proposal。Top-k helper、fallback、confidence cascade、speculative decoding、FUDGE/GeDi、reward-guided decoding、Pydantic AI Jev fallback 均有近邻，不能声称单点新颖。贡献候选是 decision-space virtualization + decision-preserving progressive refinement 的 runtime 组合，仍待验证。
+
+实验主线使用逻辑空间 10/100/1K/10K/100K、resident K=8/16/32，在删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、`+EXPAND_K`、`+BACKTRACK/LOOKUP/CLARIFY`，报告 RecoveryRate、coverage、cost、latency、state errors、side effects。BFCL coverage 仅表示 candidate availability，不等于 Jev accuracy。适用 workload 优先短字段、SQL、路径、JSON、工具参数；长篇自然语言仅作高成本实验。
+
+详见 [Decision-Preserving Progressive Refinement](docs/DECISION_PRESERVING_REFINEMENT.zh-CN.md)。当前实现含 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator、trace；VirtualOptionManager 与基础 page-in/page-out/revision/refine 原型正在实现，异步 prefetch、完整 replacement policy 和 scaling benchmark 仍待实现。`n`n# Jev 原生 Agent 系统设计
 
 **Jev 自然语言对话原型：外部 logits、Top-k token 选择与 Agent 工具调用**
 
@@ -79,3 +86,5 @@ python -m unittest discover -s tests -v
 实现与首轮结果见[原型实现与实测](docs/IMPLEMENTATION_RESULTS.zh-CN.md)。已知 Jev 缺陷对应的 state engineering、人工复核出口、确定性工具路由和 helper 优化见[JEV 限制与护栏](docs/JEV_LIMITATIONS_AND_GUARDRAILS.md)。
 
 `benchmarks/results/` 用于本地完整结果；可公开的小体量回答样例位于 `benchmarks/examples/`。模型权重与运行时密钥不进入 Git。
+
+

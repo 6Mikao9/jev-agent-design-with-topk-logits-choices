@@ -131,3 +131,10 @@ Jev 分布中若 `P(NEXT_PAGE|s_t)>τ_page`，可异步准备下一页；若某�
 4. 在真实 Jev、proxy、oracle 和 hierarchical/RAG 基线上的可复现实验矩阵。
 
 这些是待验证贡献候选；只有完成公开配置、消融和失败分析后，才应写入论文结论。
+
+## 当前项目定位（收敛版，2026-09-24）
+
+本报告应与 [Decision-Preserving Progressive Refinement](DECISION_PRESERVING_REFINEMENT.zh-CN.md) 一起阅读：项目面向非生成式 Decision Model 的 Jev-native runtime。Virtual Option Space 负责覆盖范围，progressive refinement 负责候选分辨率；Jev 始终做最终选择。Top-k helper、fallback、confidence cascade、speculative decoding、FUDGE/GeDi、reward-guided decoding 与 Pydantic AI Jev fallback 均有近邻，不能作为单点新颖性。本文的贡献候选只是两轴 runtime 组合及其一致性/恢复实验，仍待验证。
+
+当前代码仅实现 OptionSpace、PagedMemoryIndex、TwoStageMemorySelector、FastLogitsHelper、Agent/orchestrator 和 trace；VirtualOptionManager、OptionFault/RefineFault、真实 page-in/page-out/prefetch/replacement、完整 scaling benchmark 尚未实现。
+
