@@ -136,3 +136,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 2026-09-24 真实 Jev 运行 12 个 case：10 个需要选页、2 个故意含糊。页定位 10/10，页内工具选择 10/10，澄清 2/2，最终成功 12/12；共 22 次 Jev 调用，resident 上限 2，单 case 总延迟 P50 1,296.6 ms、P95 1,438.4 ms，外部副作用为 0。报告为 [multi-page-tool-selection-live.json](../benchmarks/results/multi-page-tool-selection-live.json)。
 
 同一 case 的确定性词法控制只有页定位 60%、页内工具选择 50%、澄清 0%、最终成功 58.3%，报告为 [multi-page-tool-selection-latest.json](../benchmarks/results/multi-page-tool-selection-latest.json)。相对预期：真实 Jev 在这个单跳、多页、小 resident 上限实验中明显好于控制，也超过了最低预期；但还没有证明多跳错误页恢复、更大的页目录、长轨迹或真实工具副作用。
+
+## Radix/trie 参数候选设计判断
+
+基数树适合把工具名、字段名、枚举值、路径片段和历史成功参数按共享前缀组织起来。它能减少候选描述和候选物化，并让 helper 同时预测互相独立的字段或预取下一层；候选仍需进入 Jev 的 OptionSpace，不能绕过 Jev 决策。对连续自由文本参数，基数树收益有限，应退回 schema/grammar validator 或普通 proposal。该方向已加入 roadmap，后续用参数 recall@K、非法参数率、候选物化时间、Jev 调用数、helper/网络 overlap 和副作用做验证；扩散 proposal 暂留为可选后续路线，当前小型 masked-diffusion 的质量边界不足以作为主线。

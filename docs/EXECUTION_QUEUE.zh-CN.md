@@ -42,6 +42,7 @@
 11. **状态机闭环**：把 trace 图、错误摘要、schema/dependency guard 接入实际运行；对稳定边做回放、漂移检测和人工审核，必要时导出只读决策图，不能直接自动执行未经验证的规则。
 12. **公开 agent benchmark**：在隔离环境完成 BFCL 官方可执行评测，并补充 tau2/tau3、API-Bank 或同等多轮工具任务；分别报告工具正确率、错误副作用、修复率、Jev/helper 调用数、成本和 P50/P95 延迟。
 13. **字段级参数 prior/case memory**：按 `(tool, field, state phase, semantic neighborhood)` 建立历史成功参数索引；与 schema/environment 候选合并成 `ArgumentOptionSpace`，只生成候选并交给 Jev 决策，不隐式绕过决策模型。先做 exact-state → state-machine match → semantic match 三级查找，评估参数构造步数、REFINE fault、延迟和错误副作用。该机制标为工程优化，相关的 case reuse/tool cache 已有近邻工作。
+14. **Schema-aware radix/trie 参数候选与并行 proposal（新增计划）**：把枚举值、工具名、字段名、路径片段和历史成功参数组织成 radix tree；共享前缀只保留一次，按当前 schema/state 展开有限候选，允许 helper 并行预测独立字段或预取下一层候选，再把候选交给 Jev。它适合离散/共享前缀参数，不替代 Jev，也不直接加速连续自由文本；验收包括 candidate recall@K、非法参数率、Jev 调用数、候选物化时间、helper/网络 overlap、P50/P95 和副作用。高风险 COMMIT 必须经过 schema、revision 和权限校验。
 14. **Runtime Governor（计划）**：输入完整 Jev 分布、熵、margin、候选规模、风险、成本、fault/history/budget/retrieval 特征，输出 `COMMIT/PAGE/EXPAND/REFINE/RETRIEVE/FALLBACK/CLARIFY`。以期望效用或边际 value-of-information 选择动作，不写死单一概率阈值；先用离线反事实标注，再比较 contextual bandit/offline RL，暂不把 PPO 作为首选。
 15. **Adaptive set materialization（计划）**：根据当前状态选择值得 materialize 的最小 page subset，估计 `ΔV(page)=V(S∪page)-V(S)` 与成本的关系；比较固定 top-p、固定 top-k 和自适应集合。该方向与 value-based retrieval stopping 有关，作用对象扩大到整个 OptionSpace 变换，不能宣称单点原创。
 16. **Learned Governor 安全层（计划）**：用 learned controller 负责效率，用 conformal/calibrated safety envelope 限制高风险 COMMIT；校准不足时只能 PAGE/REFINE/FALLBACK/CLARIFY。验收包括风险覆盖率、错误提交率、拒绝率、额外延迟和分布外状态。
@@ -106,7 +107,7 @@ Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `b
 - **C：机制基线已完成，真实质量未完成。** 24-step deterministic workload 保持 resident/context 上限并触发 ContextFault、stale、PAGE、REFINE；真实 Jev 目前只覆盖一个冷上下文 PAGE，尚未完成 static/append-only/RAG/aging 的消融和关键事实召回评测。
 - **串联 workload：控制流已完成，真实 Jev 串联未完成。** 24-step oracle workload 已跑通，真实 Jev 目前是 8-step smoke；必须先完成 A 的多物理工具/多虚拟页真实 Jev 定位实验，再扩大到 20–100 步，并加入真实 retrieval、工具模拟器、P50/P95 和端到端 success。
 
-5. **工程优化（排在机制正确性之后）**：连接池和 HTTP/2/1.1 keep-alive、TTFB/request-id 观测、超时与安全重连、Jev/helper/工具并行 overlap、高置信 fast path、决策批处理与调用合并。验收统一记录 fresh vs reuse、P50/P95、端到端 wall time、Jev 调用次数、fallback/recovery 正确率；任何 fast path 都不能绕过高风险 COMMIT 的校验。
+5. **工程优化（排在机制正确性之后）**：连接池和 HTTP/2/1.1 keep-alive、TTFB/request-id 观测、超时与安全重连、Jev/helper/工具并行 overlap、radix/trie 候选预取、高置信 fast path、决策批处理与调用合并。验收统一记录 fresh vs reuse、P50/P95、端到端 wall time、Jev 调用次数、fallback/recovery 正确率；任何 fast path 都不能绕过高风险 COMMIT 的校验。
 
 四个关键缺口必须分开测量，不能用 oracle locator 代替真实检索：
 
