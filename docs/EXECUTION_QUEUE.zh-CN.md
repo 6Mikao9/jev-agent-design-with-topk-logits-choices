@@ -170,6 +170,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - 多物理工具/多虚拟页真实 Jev 选择已完成：18 个物理工具、6 个页、resident 上限 2；10 个需选页的 case 全部定位正确、页内工具 10/10、2 个歧义 case 全部 CLARIFY，最终 12/12。报告为 `benchmarks/results/multi-page-tool-selection-live.json`。相对预期：明显好于确定性词法控制（最终 58.3%）和最低预期；单跳实验已通过，后续转向多跳错误页恢复、更大页目录和串联扩展。
 
 - 22-step A/B/C 真实 Jev 串联已完成首轮与修复复跑：首轮 19/22（86.4%）暴露页选择失败后继续执行、以及 COMMIT 与 resident candidate 混在同一选项面的两个问题；修复后使用 lexical page directory、工具前置 coverage gate 和 control-only action surface，22/22，fault 4、recovery 13、模拟执行 4，resident/context 峰值 4/4 与 2/2，外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live.json` 与 `benchmarks/results/jev-decision-dense-serial-live-rerun.json`。相对预期：正确率和机制边界好于首轮，平均 1.02 s/步仍高于离线 contract；先补显式错误页 recovery，再扩大 20–100 步。
+- 显式错误页 recovery 已做一次真实 Jev 故障注入：首次文件页故意返回 `CLARIFY`，随后工具前置 gate 触发 `OptionFault`，阻止空 resident 工具调用并重新选择 `PAGE:files`；页恢复和页内工具均成功，`blocked_invalid_tool_calls=1`、`page_recovery_successes=1`、外部副作用 0。报告为 `benchmarks/results/jev-decision-dense-serial-live-injected.json`；21/22 是包含故意注入错误的诊断值，不能替代正常 22/22。下一步扩展 empty/wrong-page/stale-page/correct-page 四状态矩阵。
 
 
 

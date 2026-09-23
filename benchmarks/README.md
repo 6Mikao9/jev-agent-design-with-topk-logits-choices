@@ -276,6 +276,15 @@ context peak 2/2, zero external side effects, and mean request latency
 than the first serial run and confirms the runtime fix on a small trajectory;
 it is not yet evidence for 20–100-step quality or real side-effect safety.
 
+The `--inject-page-miss` mode intentionally changes the first file-page
+decision to `CLARIFY`. In the live run, the next tool step triggered one
+`OptionFault`, blocked the invalid tool path, reissued page recovery, selected
+`PAGE:files`, and then selected `files:read_file`; the report records
+`blocked_invalid_tool_calls=1`, `page_recovery_successes=1`, and zero external
+side effects. Its 21/22 decision accuracy includes the deliberately injected
+wrong page action and must not be compared directly with the normal 22/22 run.
+The report is `benchmarks/results/jev-decision-dense-serial-live-injected.json`.
+
 ### Live Jev decision-dense smoke
 
 `benchmark_jev_decision_dense_live.py` runs eight evolving local-state decisions

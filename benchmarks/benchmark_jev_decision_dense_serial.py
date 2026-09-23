@@ -86,6 +86,22 @@ class ContractChooser(ChoiceBackend):
         return ChoiceResult(expected, {option.option_id: (1.0 if option.option_id == expected else 0.0) for option in options}, 1.0, "contract", latency_ms=0.01)
 
 
+class FaultInjectingChooser(ChoiceBackend):
+    """Inject one wrong page action to exercise the runtime recovery gate."""
+
+    def __init__(self, delegate: ChoiceBackend) -> None:
+        self.delegate = delegate
+        self.injected = False
+        self.uses_contract_suffix = isinstance(delegate, ContractChooser)
+
+    def choose(self, *, state: str, instructions: str, options: list[ChoiceOption]) -> ChoiceResult:
+        if not self.injected and "physical tool catalog" in state and any(option.option_id.startswith("PAGE:") for option in options):
+            self.injected = True
+            probabilities = {option.option_id: (1.0 if option.option_id == "CLARIFY" else 0.0) for option in options}
+            return ChoiceResult("CLARIFY", probabilities, 1.0, "fault-injector", latency_ms=0.01)
+        return self.delegate.choose(state=state, instructions=instructions, options=options)
+
+
 _STOPWORDS = {
     "the", "a", "an", "and", "or", "to", "of", "for", "with", "is", "are",
     "current", "request", "candidate", "operation", "safe", "read", "recent",
@@ -159,7 +175,7 @@ def choose(chooser: ChoiceBackend, *, state: str, options: list[ChoiceOption], e
     # The expected suffix is present only for ContractChooser and is removed from
     # live prompts; it prevents target leakage into the live Jev path.
     live_state = state
-    if isinstance(chooser, ContractChooser) and expected is not None:
+    if (isinstance(chooser, ContractChooser) or getattr(chooser, "uses_contract_suffix", False)) and expected is not None:
         live_state = f"{state}\nEVAL_EXPECTED={expected}"
     result = chooser.choose(state=live_state, instructions="Choose exactly one listed candidate or runtime control. Do not invent an option.", options=options)
     return {
@@ -292,7 +308,10 @@ def run(chooser: ChoiceBackend) -> dict:
             "steps": len(rows),
             "decision_accuracy": sum(row["correct"] for row in rows) / len(rows),
             "faults": sum(row["fault"] is not None for row in rows),
+            "option_faults": sum(row["fault"] == "OptionFault" for row in rows),
             "recoveries": sum(row["recovery"] is not None for row in rows),
+            "page_recovery_successes": sum(row["recovery"] == "page_recovery" and row["correct"] for row in rows),
+            "blocked_invalid_tool_calls": sum(row["fault"] == "OptionFault" and row["recovery"] == "page_recovery" for row in rows),
             "simulated_effects": simulated_effects,
             "resident_peak": max(row["resident_count"] for row in rows),
             "resident_bound": manager.max_resident,
@@ -313,14 +332,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--inject-page-miss", action="store_true", help="force the first page decision to CLARIFY and test recovery")
     args = parser.parse_args()
     if args.live:
         if not (os.environ.get("TYPESAFE_API_KEY") or os.environ.get("JEV_API_KEY")):
             raise SystemExit("Set TYPESAFE_API_KEY or JEV_API_KEY in the process environment")
-        chooser: ChoiceBackend = TypeSafeJevChooser(timeout_seconds=30.0)
+        chooser = TypeSafeJevChooser(timeout_seconds=30.0)
     else:
         chooser = ContractChooser()
+    if args.inject_page_miss:
+        chooser = FaultInjectingChooser(chooser)
     result = run(chooser)
+    result["fault_injection"] = "first_page_clarify" if args.inject_page_miss else None
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result["summary"], ensure_ascii=False, indent=2))
