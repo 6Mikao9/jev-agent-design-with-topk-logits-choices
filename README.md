@@ -30,6 +30,9 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - [Optional research directions](docs/OPTIONAL_IDEAS.en.md)：英文版研究路线和状态。
 - [GitHub 发布说明](docs/PUBLISHING.zh-CN.md)：如何公开这个文档包并保留清晰的版本记录。
 - [面向 Jev 的分层页表记忆](docs/JEV_MEMORY_PAGING.zh-CN.md)：两阶段页表选择、摘要、LRU/RAG 组合与评测计划。
+- [0.8B raw logits 与 KV cache](docs/FAST_LOGITS.zh-CN.md)：无 softmax、单 token cache decode 和实测基准。
+- [Jev 本地工具目录](docs/TOOL_CATALOG.zh-CN.md)：安全文件/JSON/shell、人工复核和 MCP 形状适配。
+- [框架、benchmark 与扩散方向资料](docs/RESEARCH_CATALOG.zh-CN.md)：官方来源、许可证边界和隔离评测建议。
 
 ## 核心设想
 
@@ -61,7 +64,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 - `jev_agent/`：工具候选、schema 校验、依赖感知记忆、Jev Choice 适配器和 Top-k token 回退。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、Qwen3.5/Qwen3.8 同上下文比较、`END_DIALOGUE` 对话 trace 和速度拆分。
-- `tests/`：15 个控制流与边界测试。
+- `tests/`：控制流、工具目录、KV cache 和并发候选的边界测试。
 - `pyproject.toml`：核心包及可选 Transformers/Torch 依赖。
 
 运行基础测试：
