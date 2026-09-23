@@ -51,6 +51,10 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 固定 BFCL V4 `exec_simple` 100 题中的 seed-2026、30 题样本，在远端单张空闲 RTX 5090 上 teacher-forced 运行 647 个参考 token，用时 55.449 秒。候选覆盖为：`k=1` 89.49%、`k=8` 100%、`k=32` 100%；oracle 在 `k=8` 和 `k=32` 均可覆盖完整 30/30 个参考调用。这个结果只说明正确 token 是否出现在 helper 候选集合，不代表 Jev 选择准确率、工具执行成功率或 BFCL 官方榜单成绩；原始 JSON 留在远端 `benchmarks/results/`，不进 Git。
 
+## 隔离控制流基线
+
+合成 6 个场景的脚本化控制流检查显示：proposal-only 的 oracle 完成率为 33.33%，显式 Top-k 回退和 always-Top-k 均为 83.33%；两种回退策略的 oracle action accuracy 都为 100%，但平均 helper calls 分别为 15.67 和 20.67。该套件的 chooser/helper 读取了场景金答案，只验证状态机、澄清和失效恢复，不能当作模型或 Jev 质量结果。
+
 ## 已知限制与护栏
 
 依赖版本、记忆召回和 `CLARIFY/STOP_UNRESOLVED` 已有基础实现；结构化 state packet、`REVIEW` 通道和通用精确算术路由仍是拟议优化，尚无缓解收益实验。用户提供的 Context Rot / No Rationale 等描述作为待检验假设保留，尚未独立核实其来源或因果解释。详细说明见 [JEV_LIMITATIONS_AND_GUARDRAILS.md](JEV_LIMITATIONS_AND_GUARDRAILS.md)。
