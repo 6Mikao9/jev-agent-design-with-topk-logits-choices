@@ -4,6 +4,10 @@
 
 ## 1. 选项空间划分
 
+### 1.1 横向 PAGE 与纵向 REFINE
+
+对粗粒度选项 `o` 和当前状态 `s`，runtime 定义 `Refine(o,s) -> O'`，其中 `O'` 是更细粒度的 OptionSpace。PAGE/EXPAND 只增加同一层的候选覆盖；REFINE 创建父选项 `o` 的子空间并增加表达分辨率。子空间必须继承父选项的稳定身份、revision、依赖和预算，父选项在子空间 materialize 后不能继续作为同一轮的可提交动作。任何版本漂移都触发 stale 检查和回退。
+
 每个空间都有自己的候选 ID、预算、来源和拒绝动作。Jev 可以选择空间内的选项，也可以选择 `NONE`、`CLARIFY`、`REVIEW` 或 `STOP`。
 
 | 空间 | 内容 | 默认策略 |

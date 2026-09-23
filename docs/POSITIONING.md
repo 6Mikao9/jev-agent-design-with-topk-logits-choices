@@ -4,6 +4,8 @@ This project presents a runtime for decision-native agents. The central abstract
 
 The runtime manages two unbounded logical spaces through **dual virtualization**: a Virtual Option Space controls resident actions, while a Virtual Context Space controls resident context blocks. PAGE/EXPAND broadens candidate coverage; REFINE reduces granularity; ContextFault triggers second-stage context paging; REVISION/INVALIDATE preserve consistency.
 
+We define progressive refinement as `Refine(o,s) -> O'`: given a coarse option `o` and state `s`, the runtime constructs a finer-grained option space `O'` with explicit parent identity, revision, dependencies, and budgets. PAGE/EXPAND is horizontal expansion at the same granularity; REFINE is vertical expansion of decision resolution. This distinction is a runtime semantic boundary, not a claim that either primitive is individually novel.
+
 Context is organized as Pinned, Working, and Cold tiers. Residency is a policy for semantic freshness and decision utility, not merely conventional RAG. The runtime does not rely on cross-request prefix/KV reuse, so it can mutate the working set aggressively; this does not claim that the Jev backend has no internal KV cache.
 
 ## DecisionModel backend boundary
