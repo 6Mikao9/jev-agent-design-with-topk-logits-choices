@@ -47,6 +47,10 @@ Qwen3.8 的 top-1 token 在 Qwen3.5 top10 中的 8 个上下文里都被保留�
 
 KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 序列 32/32 一致，按 full-prefix 总时间除以 KV decode 时间为 4.11 倍，按总时间为 3.66 倍。该数字只说明缓存和 raw-logit 排序的模型 forward 收益，不包含 Jev、网络或工具调用，也没有和 27B 做质量等价声明。可用 `benchmarks/benchmark_kv_cache.py` 重跑；结果原文件留在远端项目的 `benchmarks/results/`，模型权重未进入 Git。
 
+## BFCL 候选覆盖（Qwen3.5-0.8B）
+
+固定 BFCL V4 `exec_simple` 100 题中的 seed-2026、30 题样本，在远端单张空闲 RTX 5090 上 teacher-forced 运行 647 个参考 token，用时 55.449 秒。候选覆盖为：`k=1` 89.49%、`k=8` 100%、`k=32` 100%；oracle 在 `k=8` 和 `k=32` 均可覆盖完整 30/30 个参考调用。这个结果只说明正确 token 是否出现在 helper 候选集合，不代表 Jev 选择准确率、工具执行成功率或 BFCL 官方榜单成绩；原始 JSON 留在远端 `benchmarks/results/`，不进 Git。
+
 ## 已知限制与护栏
 
 依赖版本、记忆召回和 `CLARIFY/STOP_UNRESOLVED` 已有基础实现；结构化 state packet、`REVIEW` 通道和通用精确算术路由仍是拟议优化，尚无缓解收益实验。用户提供的 Context Rot / No Rationale 等描述作为待检验假设保留，尚未独立核实其来源或因果解释。详细说明见 [JEV_LIMITATIONS_AND_GUARDRAILS.md](JEV_LIMITATIONS_AND_GUARDRAILS.md)。

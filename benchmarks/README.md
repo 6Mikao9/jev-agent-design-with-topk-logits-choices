@@ -42,6 +42,15 @@ The sample is selected reproducibly with seed 2026. The full set is small
 enough to run with `--limit 100`; use a separate held-out seed or dataset for
 model selection and fine-tuning.
 
+### Qwen3.5-0.8B 30-task sample
+
+On 2026-09-24, the same seed-2026 sample was run with the local Qwen3.5-0.8B
+checkpoint on one isolated RTX 5090. It took 55.449 seconds for 647 reference
+tokens. Teacher-forced token coverage was 89.49% at k=1, 100% at k=8, and 100%
+at k=32; the oracle reached all 30/30 complete calls at k=8 and k=32. This is
+candidate availability only, not Jev choice accuracy or tool execution. The
+raw result is kept outside Git under `benchmarks/results/`.
+
 ### Recorded full-set result
 
 Qwen3-0.6B (596M parameters, BF16) was evaluated on all 100 examples using one
