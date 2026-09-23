@@ -223,3 +223,6 @@ simulated execution and the ambiguous case safely clarified. The credential-free
 report is `benchmarks/results/jev-closed-loop-fixed2.json`. This is the first
 retrieval-to-recovery live smoke test, not a long trajectory or real tool-side-effect
 benchmark.
+
+### Decision-dense workload
+enchmark_decision_dense_workload.py replays a 24-step deterministic trajectory that exercises COMMIT, PAGE, REFINE, ContextFault, stale revision, CLARIFY, and STOP. It records per-step state, resident/context bounds, faults, recovery, simulated effects, latency, and cost. The output is enchmarks/results/decision-dense-workload-latest.json. This is an oracle/control-flow upper bound with zero external side effects; it does not measure Jev quality.
