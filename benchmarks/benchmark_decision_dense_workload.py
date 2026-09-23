@@ -7,6 +7,11 @@ stale revisions, clarification, and stop, while recording bounded residency.
 from __future__ import annotations
 import json, time
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 from jev_agent.virtual_option import VirtualOptionManager, VirtualOption, OptionFault, StaleVirtualOption
 from jev_agent.context_residency import ContextResidencyManager, ContextBlock, ContextFault
 
@@ -30,7 +35,7 @@ def main():
         cm.register(ContextBlock(f"ctx{i}", f"context block {i} state", f"memory://{i}", kind="task_state" if i == 0 else "observation"))
     records=[]; side_effects=0; costs=0.0
     events = ["COMMIT","COMMIT","PAGE","COMMIT","PAGE","COMMIT","REFINE","COMMIT","CTX_FAULT","COMMIT","STALE","PAGE","COMMIT","CLARIFY","COMMIT","REFINE","COMMIT","CTX_FAULT","PAGE","COMMIT","COMMIT","STOP","STOP","STOP"]
-    page_for={2:"page:tools",4:"page:memory",11:"page:plan",18:"page:tools"}
+    page_for={3:"page:tools",5:"page:memory",12:"page:plan",19:"page:tools"}
     for step, event in enumerate(events, 1):
         t=time.perf_counter(); fault=None; recovery=None; action=event; effect=False
         try:
@@ -42,7 +47,7 @@ def main():
                 requested=f"ctx{step % 8}"
                 try: cm.require(requested)
                 except ContextFault:
-                    fault="ContextFault"; cm.rebuild([requested, "ctx0", "ctx1"]); cm.require(requested); recovery="context_rebuild"
+                    fault="ContextFault"; cm.rebuild(f"context block {requested[3:]} state"); cm.require(requested); recovery="context_rebuild"
             elif event == "STALE":
                 om.invalidate_page("page:tools"); fault="StaleVirtualOption"
                 om.register_page("page:tools", [opt("tool.read.v2","page:tools","read file v2",rev=2),opt("tool.write.v2","page:tools","write file v2",rev=2)],revision=2)
