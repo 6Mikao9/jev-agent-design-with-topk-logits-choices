@@ -59,6 +59,10 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 合成 6 个场景的脚本化控制流检查显示：proposal-only 的 oracle 完成率为 33.33%，显式 Top-k 回退和 always-Top-k 均为 83.33%；两种回退策略的 oracle action accuracy 都为 100%，但平均 helper calls 分别为 15.67 和 20.67。该套件的 chooser/helper 读取了场景金答案，只验证状态机、澄清和失效恢复，不能当作模型或 Jev 质量结果。
 
+## DecisionModel capability 与 page recovery 机制基线
+
+新增 `benchmarks/benchmark_backend_capability.py`，在逻辑选项规模 10/100/1K/10K/100K、resident `K=8/16/32` 上比较固定 resident set 与 synthetic `PAGE/EXPAND`。100K、backend capability=1.0、5 次抽样的结果为：固定 resident 在三种 K 下成功率均为 0%，page-expand 均为 100%；每组都保持 resident 上限，额外 page-in 为 5 次。该实验只验证“正确选项缺失时 page-in 能恢复”的机制，不包含 Jev 判断、真实任务质量或网络成本。
+
 ## 小型 masked-diffusion proposal 试验
 
 从 [BabyLM 2026 Strict-Small MDLM 模型卡](https://huggingface.co/amosluna/babylm-2026-strict-small-mdlm-seed42) 下载了 Apache-2.0 的 98.4M 参数 checkpoint（约 377 MiB，权重不进 Git），在远端空闲 GPU 2 上成功加载。三个不同长度/去噪步数的完整 proposal 通过 `ParallelCandidateGenerator` 并行调度，单次约 0.34–0.44 秒；这是接口和调度验证，不是质量结果。

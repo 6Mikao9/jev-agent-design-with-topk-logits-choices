@@ -149,3 +149,7 @@ Run `python benchmarks/benchmark_memory_jev.py --output /tmp/memory-jev.json` to
 ### Virtual Option Space scaling mechanism baseline
 
 Run `python benchmarks/benchmark_virtual_option_scaling.py --output /tmp/virtual-option-scaling.json` for logical spaces of 10/100/1K/10K/100K options and resident bounds `K=8/16/32`. The benchmark measures deterministic page-in, `OptionFault`, LRU eviction, stable-ID resolution and the resident bound. It makes no Jev calls and is not a scaling result for task quality; follow-up experiments must add candidate deletion, Jev decisions, refinement and recovery-cost measurements.
+
+### Decision Model capability and page recovery
+
+Run `python benchmarks/benchmark_backend_capability.py --output /tmp/backend-capability.json` to compare a fixed resident set with synthetic `PAGE/EXPAND` recovery at backend capabilities 0.6/0.7/0.8/0.9/1.0. Logical option sizes and resident bounds match the paper plan. This is an oracle-style mechanism baseline: replace the synthetic backend with real Jev or another DecisionModel only after fixing the task split and measuring `RecoveryRate` on initially missing targets.
