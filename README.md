@@ -33,6 +33,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - [0.8B raw logits 与 KV cache](docs/FAST_LOGITS.zh-CN.md)：无 softmax、单 token cache decode 和实测基准。
 - [Jev 本地工具目录](docs/TOOL_CATALOG.zh-CN.md)：安全文件/JSON/shell、人工复核和 MCP 形状适配。
 - [框架、benchmark 与扩散方向资料](docs/RESEARCH_CATALOG.zh-CN.md)：官方来源、许可证边界和隔离评测建议。
+- [选项空间、状态机与可展开记忆](docs/OPTION_SPACES_STATE_MACHINE.zh-CN.md)：工具/记忆/预测分区、错误记忆和 88 轮验证队列。
 
 ## 核心设想
 
