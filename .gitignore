@@ -1,0 +1,21 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.pytest_cache/
+
+# Local benchmark output and model artifacts
+benchmarks/results/
+results/
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Local operations logs and caches
+ops/
+.cache/
+.mypy_cache/
+.ruff_cache/

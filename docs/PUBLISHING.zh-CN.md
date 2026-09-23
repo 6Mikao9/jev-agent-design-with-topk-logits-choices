@@ -10,11 +10,11 @@ GitHub 适合公开这份设计：README 提供入口，Markdown 正文便于阅
 
 Description：
 
-> Jev natural-language conversation prototype: external helper logits produce a dynamic Top-k token table, Jev chooses each next token, and the project extends this loop to agent tools, fallback, memory, and replanning.
+> Jev-native agent prototype with an external-helper Top-k token interface, tool integration, memory, and replanning; live Jev long-form generation remains under evaluation.
 
 建议的 GitHub Description（可直接复制）：
 
-> Jev natural-language conversation prototype using external helper logits and dynamic Top-k token selection. Jev chooses each next token for fluent dialogue, with agent tools, fallback, memory, and replanning.
+> Jev-native agent prototype with external helper logits, dynamic Top-k token candidates, tools, memory, and replanning. The implemented token-by-token helper path is available; live Jev long-form dialogue evaluation is pending.
 
 建议 Topics：
 
@@ -76,7 +76,7 @@ jev-agent-design/
 1. 在自己的 GitHub 账号下新建公开仓库，可使用 `jev-agent-design` 或自选名称。
 2. 本版本不公开作者身份。初稿日期保留为写作日期，首次公开时间以实际发布为准。
 3. 将本目录内容上传到仓库根目录。README 中的链接已经按这一目录结构编写。
-4. 可以发布一个 `v0.6-prototype` Release，说明项目已有外部 logits + Jev 的可运行自然语言对话原型，并加入“辅助 logits 生成动态 token 表、Jev 逐步选择下一 token”的协议说明。此前的 v0.5 为原型说明版本。
+4. 如发布 `v0.6-prototype` Release，应说明已实现核心 agent、TypeSafeJeV 适配器与逐 token helper 接口，并明确证据边界：已保存的四题长回答和速度实验使用 `local_top1_proxy` 直接选择 helper top-1；真实 Jev 只有一次工具候选 smoke test，尚无真实 Jev 逐 token 长回答验证。可将“辅助 logits 生成动态 token 表、Jev 逐步选择下一 token”描述为设计接口，不应据此宣称真实 Jev 流畅对话已验证。此前 v0.5 为原型说明版本。
 5. 后续修改保留版本说明；新增实现、机制或实验时写清楚该版本增加了什么。
 
 GitHub Release 关联仓库历史中的标签。标签日期和 Release 日期可能不同，分享时可以给出明确的版本链接。[GitHub Release 官方说明](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)

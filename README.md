@@ -10,9 +10,9 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 本项目探索如何围绕 Jev 的结构化决策接口构建完整 agent 系统。系统利用现有工具定义和执行器，由辅助小模型或扩散模型先提出完整参数或片段，Jev 选择合适的提案；当提案均不适用时，Jev 可显式选择 Top-k 回退。辅助生成模型根据当前参数前缀输出 logits，取概率最高的 k 个 token 组成动态 token 表；Jev 从这张表中选择下一 token，拼接到前缀后继续下一轮。这使回退路径在控制流程上类似大模型的下一 token 采样，同时保留 Jev 对每一步选项的决策权。系统按决策影响管理多层记忆，并根据依赖关系在任务变化后局部重规划，支持自然语言任务、澄清和修正。
 
-项目已经完成一个可运行原型：使用低成本外部生成模型提供下一 token logits，Jev 从 logits 的 Top-k 动态 token 表中逐步选择 token，形成连贯的自然语言输出。外部模型可以替换，Qwen‑0.8B 只是当前实验实现之一。当前正在推进代码整理、复现实验和基线比较；性能结果和实验结论仍会随评估更新。
+项目已包含可运行原型和 Jev Choice 接口：外部生成模型提供下一 token logits，选择器从 Top-k 动态 token 表中选择并继续生成。**当前保存的完整对话和速度实验使用 `local_top1_proxy`（取 helper 的最高分 token），没有使用真实 Jev 逐 token 决策。**真实 Jev 仅完成了一次工具候选接口测试；真实 Jev 长回答的质量和速度仍待评测。外部模型可替换，Qwen3.5-0.8B 是当前 helper 实现之一。
 
-当前原型的研究定位是：在本次有界检索中，我们尚未发现公开的 Jev + 外部生成模型 logits Top-k token 选择组合，用于输出连贯、可正常交流的自然语言。这里的“正常交流”指动态语言模型候选支持下的句子级语义表达，不是固定词表拼接出的字符或词序列。项目可暂称为“我们检索到的首个公开 Jev 外部 logits 流畅对话方案”，该声明限定于检索范围和具体技术组合，待代码、样例和基线公开后再进一步确认。
+研究范围是 Jev 与外部 logits Top-k 动态候选协作的自然语言生成方案。已有有界检索记录保留在设计文档中；本次代码发布记录具体实现和实验边界，不据此声称已验证“首个真实 Jev 流畅对话系统”。
 
 ## 与固定词表生成的区别
 
@@ -51,3 +51,24 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - 后续版本应记录新增机制、实现范围、结果和已知限制。
 - 资料核对截至 2026-09-23；模型接口和社区实现可能继续变化。
 - 项目状态：进行中；后续提交将记录接口实现、实验配置、结果和已知限制。
+
+## 可运行原型
+
+[原始回答示例](benchmarks/examples/dialogue-proxy.md)保留输入和逐字输出，明确标注代理来源，包含小模型在冲突题中把“想要”改成“必须”的失败细节。
+
+当前仓库已经包含第一版 Python 原型：
+
+- `jev_agent/`：工具候选、schema 校验、依赖感知记忆、Jev Choice 适配器和 Top-k token 回退。
+- `benchmarks/`：合成控制流、BFCL 候选覆盖、Qwen3.5/Qwen3.8 同上下文比较、`END_DIALOGUE` 对话 trace 和速度拆分。
+- `tests/`：15 个控制流与边界测试。
+- `pyproject.toml`：核心包及可选 Transformers/Torch 依赖。
+
+运行基础测试：
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+实现与首轮结果见[原型实现与实测](docs/IMPLEMENTATION_RESULTS.zh-CN.md)。已知 Jev 缺陷对应的 state engineering、人工复核出口、确定性工具路由和 helper 优化见[JEV 限制与护栏](docs/JEV_LIMITATIONS_AND_GUARDRAILS.md)。
+
+`benchmarks/results/` 用于本地完整结果；可公开的小体量回答样例位于 `benchmarks/examples/`。模型权重与运行时密钥不进入 Git。

@@ -1,0 +1,63 @@
+[
+  {
+    "id": "logs-covered",
+    "goal": "Find staging errors from the last half hour",
+    "field": "query",
+    "gold": "severity=error",
+    "drafts": ["severity=error", "severity=warning"],
+    "facts_available": true,
+    "tool_service": "staging",
+    "dependencies": {"service": 1, "window": 1}
+  },
+  {
+    "id": "logs-open-query",
+    "goal": "Find long-context errors without checking capacity changes",
+    "field": "query",
+    "gold": "severity=error AND context_length>16k",
+    "drafts": ["severity=error", "context_length>16k"],
+    "facts_available": true,
+    "tool_service": "staging",
+    "dependencies": {"service": 1, "window": 1}
+  },
+  {
+    "id": "logs-needs-clarification",
+    "goal": "Investigate the recent incident",
+    "field": "query",
+    "gold": "",
+    "drafts": ["severity=error", "severity=warning"],
+    "facts_available": false,
+    "tool_service": "staging",
+    "dependencies": {"service": 0, "window": 0}
+  },
+  {
+    "id": "logs-user-revision",
+    "goal": "After the user correction, focus on timeouts only",
+    "field": "query",
+    "gold": "status=timeout",
+    "drafts": ["severity=error"],
+    "facts_available": true,
+    "stale_drafts": true,
+    "tool_service": "staging",
+    "dependencies": {"service": 1, "window": 2}
+  },
+  {
+    "id": "logs-combined-filter",
+    "goal": "Find errors from requests over 16k tokens",
+    "field": "query",
+    "gold": "severity=error AND context_length>16k",
+    "drafts": [],
+    "facts_available": true,
+    "tool_service": "staging",
+    "dependencies": {"service": 1, "window": 1}
+  },
+  {
+    "id": "logs-specified-service",
+    "goal": "Search only the named payments service for 5xx responses",
+    "field": "query",
+    "gold": "status>=500",
+    "drafts": ["severity=error", "status>=500"],
+    "facts_available": true,
+    "tool_service": "payments",
+    "dependencies": {"service": 2, "window": 1}
+  }
+]
