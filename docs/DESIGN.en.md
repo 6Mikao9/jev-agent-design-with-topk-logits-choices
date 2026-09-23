@@ -6,7 +6,7 @@
 | Draft date | 2026-09-23 |
 | Document type | Public technical design draft |
 | Status | In progress; design, prototype implementation, and evaluation are being developed together |
-| Author | Liu Yuntao (刘云韬) |
+| Author | Anonymous |
 
 ## Abstract
 
@@ -204,4 +204,4 @@ Implement the basic tool and state loop first, then I1/I3 memory and replanning,
 
 ## Appendix: status and provenance
 
-This repository is an independent design by Liu Yuntao and is not affiliated with TypeSafe. The draft date is not a publication date. The source check and originality wording above were updated on 2026-09-23. Implementation, benchmarks, and measured claims remain future work.
+This repository is an independent anonymous design and is not affiliated with TypeSafe. The draft date is not a publication date. The source check and originality wording above were updated on 2026-09-23. Implementation, benchmarks, and measured claims remain future work.
