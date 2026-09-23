@@ -41,27 +41,53 @@
 10. **工具生态适配**：在隔离环境中挑选少量热门 agent 工具或框架，保留出处和许可证范围，转成 Jev 可选的安全 schema；目前只有本地工具目录和 MCP 形状描述，没有完整生态接入。
 11. **状态机闭环**：把 trace 图、错误摘要、schema/dependency guard 接入实际运行；对稳定边做回放、漂移检测和人工审核，必要时导出只读决策图，不能直接自动执行未经验证的规则。
 12. **公开 agent benchmark**：在隔离环境完成 BFCL 官方可执行评测，并补充 tau2/tau3、API-Bank 或同等多轮工具任务；分别报告工具正确率、错误副作用、修复率、Jev/helper 调用数、成本和 P50/P95 延迟。
+    - **文字/ASCII 游戏与 AI PvP（计划，当前串联 workload 之后）**：优先复用 TextArena，OpenSpiel 作为备选；用可回放的回合制环境测长期决策、动作分页、参数细化和历史记忆，详见下文“游戏 benchmark 执行计划”。当前未下载或运行，没有对战结果。
 13. **字段级参数 prior/case memory**：按 `(tool, field, state phase, semantic neighborhood)` 建立历史成功参数索引；与 schema/environment 候选合并成 `ArgumentOptionSpace`，只生成候选并交给 Jev 决策，不隐式绕过决策模型。先做 exact-state → state-machine match → semantic match 三级查找，评估参数构造步数、REFINE fault、延迟和错误副作用。该机制标为工程优化，相关的 case reuse/tool cache 已有近邻工作。
 14. **Schema-aware radix/trie 参数候选与并行 proposal（新增计划）**：把枚举值、工具名、字段名、路径片段和历史成功参数组织成 radix tree；共享前缀只保留一次，按当前 schema/state 展开有限候选，允许 helper 并行预测独立字段或预取下一层候选，再把候选交给 Jev。它适合离散/共享前缀参数，不替代 Jev，也不直接加速连续自由文本；验收包括 candidate recall@K、非法参数率、Jev 调用数、候选物化时间、helper/网络 overlap、P50/P95 和副作用。高风险 COMMIT 必须经过 schema、revision 和权限校验。
-14. **Runtime Governor（计划）**：输入完整 Jev 分布、熵、margin、候选规模、风险、成本、fault/history/budget/retrieval 特征，输出 `COMMIT/PAGE/EXPAND/REFINE/RETRIEVE/FALLBACK/CLARIFY`。以期望效用或边际 value-of-information 选择动作，不写死单一概率阈值；先用离线反事实标注，再比较 contextual bandit/offline RL，暂不把 PPO 作为首选。
-15. **Adaptive set materialization（计划）**：根据当前状态选择值得 materialize 的最小 page subset，估计 `ΔV(page)=V(S∪page)-V(S)` 与成本的关系；比较固定 top-p、固定 top-k 和自适应集合。该方向与 value-based retrieval stopping 有关，作用对象扩大到整个 OptionSpace 变换，不能宣称单点原创。
-16. **Learned Governor 安全层（计划）**：用 learned controller 负责效率，用 conformal/calibrated safety envelope 限制高风险 COMMIT；校准不足时只能 PAGE/REFINE/FALLBACK/CLARIFY。验收包括风险覆盖率、错误提交率、拒绝率、额外延迟和分布外状态。
-17. **Candidate proposer 接口（计划）**：扩散模型、small AR、retriever、compiler 和历史 prior 都实现同一 proposer 接口；扩散模型只作为并行候选生成器，不作为论文 headline 或决策者。评估 proposal recall、Jev 选择成本和失败回退。
+15. **Runtime Governor（计划）**：输入完整 Jev 分布、熵、margin、候选规模、风险、成本、fault/history/budget/retrieval 特征，输出 `COMMIT/PAGE/EXPAND/REFINE/RETRIEVE/FALLBACK/CLARIFY`。以期望效用或边际 value-of-information 选择动作，不写死单一概率阈值；先用离线反事实标注，再比较 contextual bandit/offline RL，暂不把 PPO 作为首选。
+16. **Adaptive set materialization（计划）**：根据当前状态选择值得 materialize 的最小 page subset，估计 `ΔV(page)=V(S∪page)-V(S)` 与成本的关系；比较固定 top-p、固定 top-k 和自适应集合。该方向与 value-based retrieval stopping 有关，作用对象扩大到整个 OptionSpace 变换，不能宣称单点原创。
+17. **Learned Governor 安全层（计划）**：用 learned controller 负责效率，用 conformal/calibrated safety envelope 限制高风险 COMMIT；校准不足时只能 PAGE/REFINE/FALLBACK/CLARIFY。验收包括风险覆盖率、错误提交率、拒绝率、额外延迟和分布外状态。
+18. **Candidate proposer 接口（计划）**：扩散模型、small AR、retriever、compiler 和历史 prior 都实现同一 proposer 接口；扩散模型只作为并行候选生成器，不作为论文 headline 或决策者。评估 proposal recall、Jev 选择成本和失败回退。
 
 ## P2：记忆系统和工程化扩展
 
-18. **分页记忆长期运行**：实现约 200 个一级目录、多级父页、原始子页回溯、摘要版本、LRU 只作排序/淘汰信号，以及向量/BM25 混合 RAG；专门测低频旧事实和父页合并造成的事实损失。
-19. **上下文区域预算**：把任务核心、明确读取记忆、最近记忆、工具扩展、预测 proposal、错误/trace 分成独立预算，实现工具翻页、默认参数和最近成功历史。
-20. **记忆评测消融**：测粗筛漏失率、`recall@M`、最终 `precision@K`、关键事实覆盖率、选择稳定性、校准误差、澄清率、读取字节和分阶段延迟；缓存命中率只作为成本指标。
-21. **本地下载/传送 fallback**：整理不走代理的镜像下载、校验、断点续传、传到远端项目目录和本地临时权重清理脚本；不把权重或凭据写入仓库。
-22. **远端项目清理**：在确认文件归属后，清理 Docker 内无关旧项目，保留其文档；操作范围限定在 `/home/liuyuntao/jev-agent-prototype`，不碰共享工作空间。
+19. **分页记忆长期运行**：实现约 200 个一级目录、多级父页、原始子页回溯、摘要版本、LRU 只作排序/淘汰信号，以及向量/BM25 混合 RAG；专门测低频旧事实和父页合并造成的事实损失。
+20. **上下文区域预算**：把任务核心、明确读取记忆、最近记忆、工具扩展、预测 proposal、错误/trace 分成独立预算，实现工具翻页、默认参数和最近成功历史。
+21. **记忆评测消融**：测粗筛漏失率、`recall@M`、最终 `precision@K`、关键事实覆盖率、选择稳定性、校准误差、澄清率、读取字节和分阶段延迟；缓存命中率只作为成本指标。
+22. **本地下载/传送 fallback**：整理不走代理的镜像下载、校验、断点续传、传到远端项目目录和本地临时权重清理脚本；不把权重或凭据写入仓库。
+23. **远端项目清理**：在确认文件归属后，清理 Docker 内无关旧项目，保留其文档；操作范围限定在 `/home/liuyuntao/jev-agent-prototype`，不碰共享工作空间。
 
 ## P3：论文和新颖性核验
 
-23. **相关工作审计**：核对 Jev memory、RAG、RAPTOR、GraphRAG、MemGPT/Letta、工具选择、状态机编译、扩散 proposal 和超远捞针工作，区分已有组件、组合创新和真正尚未验证的贡献候选。
-24. **DeepSeek 架构小模型调查**：查找公开、许可证清晰、尺寸足够小的同架构科研模型；没有合适模型时记录检索范围和否定结果，不强行下载替代品。
-25. **论文级复现包**：固定数据、随机种子、模型版本、GPU 选择、配置和结果格式，补齐许可证/出处、失败案例和消融图表，再讨论顶会投稿定位。
-26. **凭据生命周期整理**：检查临时 API 凭据是否仍在本机文件或环境变量中，使用后清理运行日志和临时副本；任何凭据都不写入 Git 或公开文档。
+24. **相关工作审计**：核对 Jev memory、RAG、RAPTOR、GraphRAG、MemGPT/Letta、工具选择、状态机编译、扩散 proposal 和超远捞针工作，区分已有组件、组合创新和真正尚未验证的贡献候选。
+25. **DeepSeek 架构小模型调查**：查找公开、许可证清晰、尺寸足够小的同架构科研模型；没有合适模型时记录检索范围和否定结果，不强行下载替代品。
+26. **论文级复现包**：固定数据、随机种子、模型版本、GPU 选择、配置和结果格式，补齐许可证/出处、失败案例和消融图表，再讨论顶会投稿定位。
+27. **凭据生命周期整理**：检查临时 API 凭据是否仍在本机文件或环境变量中，使用后清理运行日志和临时副本；任何凭据都不写入 Git 或公开文档。
+
+## 游戏 benchmark 执行计划（2026-09-24，尚未实施）
+
+定位：作为 A/B/C 串联后的补充 workload，提供规则引擎裁决、长回合轨迹和 AI 对战。AI PvP 已有成熟框架，不作为新颖性主张；研究问题是同一 decision backend 在不同 runtime 策略下的胜率、恢复能力和预算利用率。
+
+候选环境与用途（来源于官方资料，接入前固定 commit、许可证和规则配置）：
+
+| 候选 | 用途 | 边界 |
+| --- | --- | --- |
+| TextArena 的 TicTacToe / ConnectFour | 先验证文字观察、合法动作、回合推进和胜负裁决 | 动作空间很小，只作适配 smoke，不证明大规模分页或记忆收益 |
+| TextArena 的 Battleship / MemoryGame | 检查历史观察读取、重复动作和不完全信息下的决策 | 若默认观察已包含完整历史，必须单独标记 memory-limited wrapper；不声称原环境天然检验 C |
+| 具有单位、目标与参数组合的回合制棋盘环境 | 按动作族/单位分 PAGE，按动作目标/参数做 REFINE，观察日志做 context paging | 先复用现成环境；只有确实缺少所需机制时再做小型公开扩展，不凭空添加无意义候选以制造 scaling |
+| 自建可回放 ASCII 微型环境（资源、门、库存、冷却、交易） | 直接控制动作数、页数、参数错误、工具失败、矛盾观测和长轨迹噪声，作为 A/B/C 的主诊断环境 | 规则、状态转移和奖励全部由程序裁决；不能把最优动作标签放进观察 |
+| OpenSpiel | 固定规则对手、搜索基线及完全/不完全信息对照 | 单独适配各玩家可见观察；全局 state 仅归裁判，不能直接传给玩家 |
+
+协议与验收：
+
+1. 使用 ASCII 棋盘加简短规则；提供等信息量的结构化观察对照，区分读图/读字符错误与 runtime 错误。裁判负责确定性规则与终局；玩家只看自己的观察、历史和合法动作，不看对手隐藏信息或最优动作标签。
+2. A：逻辑合法动作集大于 resident K 时，按自然动作类别分页；统计总可选动作数、实际提交 Jev 的选项数（包含控制项）、PAGE 次数、动作覆盖和错误页恢复。B：将粗动作逐层细化成完整参数，并成对注入候选缺失、schema/参数错误、工具超时、矛盾观测、用户更正和 revision 变化，统计非法动作、预算超限、恢复触发/漏触发、恢复步数与成功率。C：比较完整/截断历史、RAG replacement 与 bounded residency；读取的记忆只能来自该玩家先前见过的信息。
+3. 先用冻结的随机合法对手、规则/搜索对手做可复现基线，再运行 Jev+完整 runtime、Jev+消融 runtime、helper-only、常规生成式 agent 的交叉 PvP。所有策略使用同一游戏规则、观测权限和合法性约束；不为某个方法暗中提供最优动作。
+4. 配对随机种子并交换先后手/阵营，冻结模型和提示词，预注册页数、resident K、轨迹长度、噪声量、Jev/helper/tool-call/token/time budget 的 factorial 对照，分开报告同调用预算、同时间预算或同成本预算。主线先看正确率与机制，网络超时单列；不会将超时过滤后剩余对局的胜率当全量成绩。
+5. 报告胜/负/和、置信区间、终局完成率、非法动作率、fault/recovery、关键历史读取、Jev/helper 调用数和 resident/context 实测峰值；另报告规则状态上的 action quality、regret、目标完成和资源/存活。复杂游戏不强行定义唯一“正确招”；最优动作准确率只用于有精确解的小状态。自我对弈双方得分对称不能证明进步；Elo 只在明确的对手池内作相对指标。
+6. 保留逐回合轨迹与失败归因：观察表示、候选漏失、选错页、参数细化、历史遗忘、策略失误、API 错误分别记录；先最小复现，再设计工程/算法修复和消融，不因输一局就判定机制失败。
+
+来源：[TextArena 官方仓库](https://github.com/TextArena/TextArena)、[游戏目录](https://github.com/TextArena/TextArena/blob/main/textarena/envs/README.md)、[OpenSpiel 官方仓库](https://github.com/google-deepmind/open_spiel)。上述是设计与候选筛选，不是运行证据；执行顺序仍为当前多页检查 → A/B/C 串联 → 游戏适配 smoke → 冻结对手基线 → PvP 消融。
 
 ## 执行规则
 
@@ -142,3 +168,6 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - 延迟长尾诊断已完成：fresh 直连分段显示建连约 0.32–0.49 s，响应体约 0.02 ms，主要等待在 response-header/TTFB（0.38–6.28 s，另有一次 30 s timeout）；持久连接对照平均 635.7 ms、P95 823.5 ms。相对预期：确认连接池能明显改善固定开销，但服务端/跨境路径长尾仍存在。后续优先接入连接池与 TTFB/request-id 观测，再用高置信 fast path、调用合并和 helper/网络 overlap 减少串行 Jev 次数。
 
 - 多物理工具/多虚拟页真实 Jev 选择已完成：18 个物理工具、6 个页、resident 上限 2；10 个需选页的 case 全部定位正确、页内工具 10/10、2 个歧义 case 全部 CLARIFY，最终 12/12。报告为 `benchmarks/results/multi-page-tool-selection-live.json`。相对预期：明显好于确定性词法控制（最终 58.3%）和最低预期；下一步先补多跳错误页恢复与更大页目录，再开始串联 workload。
+
+
+
