@@ -32,6 +32,18 @@ class ToolSpec:
             self.parameters_schema, self.executor,
         )
 
+    def as_mcp_descriptor(self) -> dict[str, Any]:
+        """Return the tool-shaped portion of an MCP ``tools/list`` result.
+
+        This is only a data adapter. It does not open stdio/HTTP transport or
+        imply that a remote MCP server is trusted.
+        """
+        return {
+            "name": self.name,
+            "description": self.description,
+            "inputSchema": self.parameters_schema,
+        }
+
 
 class ToolCatalog:
     def __init__(self, specs: Iterable[ToolSpec] = ()) -> None:
@@ -49,6 +61,17 @@ class ToolCatalog:
 
     def specs(self) -> tuple[ToolSpec, ...]:
         return tuple(self._specs.values())
+
+    def mcp_descriptors(self) -> list[dict[str, Any]]:
+        """Export only executable local tools for a protocol adapter."""
+        return [spec.as_mcp_descriptor() for spec in self._specs.values() if spec.available]
+
+    def call(self, name: str, arguments: dict[str, Any]) -> Any:
+        """Dispatch a local call; transport and authentication stay external."""
+        spec = self.get(name)
+        if not spec.available:
+            raise PermissionError(f"tool is unavailable: {name}")
+        return spec.executor(arguments)
 
 
 def _schema(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:

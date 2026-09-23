@@ -52,6 +52,15 @@ class ToolCatalogTests(unittest.TestCase):
             self.assertEqual(spec.executor({})["status"], "unavailable")
         exposed = {item.name for item in catalog_as_tool_definitions(self.catalog)}
         self.assertNotIn("http.request", exposed)
+        descriptors = self.catalog.mcp_descriptors()
+        self.assertIn("file.read", {item["name"] for item in descriptors})
+        self.assertNotIn("http.request", {item["name"] for item in descriptors})
+
+    def test_protocol_adapter_dispatches_only_available_tools(self):
+        self.catalog.get("file.write").executor({"path": "x.txt", "text": "ok"})
+        self.assertEqual(self.catalog.call("file.read", {"path": "x.txt"})["text"], "ok")
+        with self.assertRaises(PermissionError):
+            self.catalog.call("http.request", {"method": "GET", "url": "https://example.com"})
 
     def test_review_and_stop_are_explicit_non_execution_signals(self):
         self.assertEqual(

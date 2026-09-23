@@ -6,6 +6,8 @@
 
 `catalog_as_choice_options(catalog)` 按注册顺序产生短、稳定的 ID：`tool_01`、`tool_02`……；可用工具的 payload 是 `ToolSpec`。说明文本含工具名、用途和可用状态，便于 Jev 用有限候选 token 选择。`catalog_as_tool_definitions` 只暴露 `available=True` 的工具；它不会替 Jev 选择，也不绕过参数校验。
 
+`catalog.mcp_descriptors()` 可把可执行工具导出成 MCP `tools/list` 形状的纯数据，`catalog.call(name, arguments)` 提供本地分发。两者都不启动 MCP 传输、不连接远端 server；若接 stdio/HTTP，应由外层另行配置信任、超时、网络和进程隔离。
+
 ## 工具与参数
 
 所有参数均为 JSON 对象，未列字段由 `additionalProperties: false` 拒绝。`?` 表示可选。
