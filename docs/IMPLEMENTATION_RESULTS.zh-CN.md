@@ -8,6 +8,7 @@
 - `jev_agent/topk.py`：辅助模型 logits、精确 token ID 回灌、边界安全解码，以及 `END_DIALOGUE` 完整性控制。
 - `jev_agent/models.py` 与 `memory.py`：依赖版本传播、按影响召回记忆和局部失效。
 - `jev_agent/jev_client.py`：直连 TypeSafe System One 的 Jev Choice 适配器；密钥只从进程环境读取，不写入仓库。
+- `jev_agent/orchestrator.py`：将两阶段页表读取、现有工具 Agent 和状态/错误 trace 串成可回放的单次执行闭环；它是垂直切片，不是完整规划器。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、同上下文 top-k 重合、对话 trace 和速度拆分脚本。
 
 ## 候选覆盖结果
