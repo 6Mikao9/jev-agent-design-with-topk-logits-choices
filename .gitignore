@@ -19,3 +19,10 @@ ops/
 .cache/
 .mypy_cache/
 .ruff_cache/
+
+# External benchmark source/data (manifest is tracked)
+benchmarks/external/*
+!benchmarks/external/README.zh-CN.md
+benchmarks/external/**/data/
+benchmarks/external/**/datasets/
+benchmarks/external/**/models/
