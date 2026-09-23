@@ -86,3 +86,7 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 ## 超远捞针 adversarial lexical 控制
 
 随后运行 `benchmark_needle_adversarial.py` 做负向控制：100 页、`limit=16`、目标固定在最后一页时，摘要含完整查询词的 case 命中；事实只出现在正文、摘要使用同义改写时均漏失；前面放置 32 个相同查询词的 decoy 页时也因候选上限漏失。这些是词法粗筛的预期边界，不是 Jev 选择失败，后续需要语义摘要、混合检索和自适应 page materialization。
+
+## 两阶段记忆控制矩阵
+
+新增 `benchmarks/benchmark_memory_matrix.py`，在无网络 replay chooser 下覆盖五条路径：单页读取、两页歧义读取、无候选、单页超出读取预算、计数选择后页面变 stale。2026-09-24 五个 case 分别得到 `read_complete`、`read_complete`、`no_candidates`、`read_budget_exceeded`、`stale_selection`；单页和双页读取分别为 22 和 46 字节。该结果验证边界和阻断逻辑，不代表真实 Jev 的排序质量。

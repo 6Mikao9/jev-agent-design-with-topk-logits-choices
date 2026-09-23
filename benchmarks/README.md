@@ -176,3 +176,10 @@ whose fact appeared only in content and a paraphrased summary both missed. With
 because of the candidate limit. These are expected lexical-prefilter failure modes
 and motivate summary quality, semantic retrieval and adaptive materialization work;
 they do not measure Jev selection accuracy.
+
+### Two-stage memory control matrix
+
+`benchmark_memory_matrix.py` replays five bounded control paths without a network key:
+`single` read (1 page), `ambiguous_two_pages` read (2 pages), `no_candidates`, a
+`read_budget_exceeded` rejection, and `stale_selection` after the count decision.
+The replay chooser is deterministic wiring control, not Jev quality evidence.
