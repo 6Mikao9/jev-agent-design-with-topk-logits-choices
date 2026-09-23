@@ -14,4 +14,4 @@ models = ["torch", "transformers"]
 dev = ["ruff"]
 
 [tool.setuptools.packages.find]
-include = ["jev_agent*"]
+include = ["jev_agent*", "jev_tools*"]
