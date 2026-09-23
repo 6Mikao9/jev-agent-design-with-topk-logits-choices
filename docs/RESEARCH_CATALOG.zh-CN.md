@@ -52,6 +52,11 @@
 3. **阶段 C：并行 proposal 插件**，单独接一个 masked diffusion helper 或 Medusa-style candidate tree。调用协议应表达 `candidate_text / span / field / confidence / provenance`，不可假装它返回 AR `next_token_logits`。Jev 选择 span/字段/候选；需要逐 token 输出时，仅回退到有 next-token 条件分布的 helper。
 4. 每种模型分别记录：成功任务吞吐/延迟、平均去噪/验证轮数、模型调用/token、Jev 选择次数、proposal 覆盖、最终准确率/约束保持率和内存峰值。并行度/每轮 token 数是性能指标，不是质量分数。
 
+本仓库还提供 `benchmarks/benchmark_diffusion_candidates.py`：它用一个小型
+BabyLM masked-diffusion checkpoint 生成三组完整参数 proposal，再交给通用的
+`ParallelCandidateGenerator`。该实验只验证接口、并行调度和候选记录；Jev 的
+接受/拒绝质量仍需用结构化任务和状态快照评测。
+
 ## 不应直接复制的内容
 
 - 将某框架内置的 agent loop、提示模板、记忆格式、重试策略或状态对象直接移植成 Jev 的核心语义；这会造成依赖耦合，而且掩盖“Jev 每一步到底选择了什么”。

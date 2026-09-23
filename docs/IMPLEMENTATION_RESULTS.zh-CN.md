@@ -55,6 +55,12 @@ KV 路径 prefill 为 76.28 ms，decode 为 617.72 ms；两条路径的 top-1 �
 
 合成 6 个场景的脚本化控制流检查显示：proposal-only 的 oracle 完成率为 33.33%，显式 Top-k 回退和 always-Top-k 均为 83.33%；两种回退策略的 oracle action accuracy 都为 100%，但平均 helper calls 分别为 15.67 和 20.67。该套件的 chooser/helper 读取了场景金答案，只验证状态机、澄清和失效恢复，不能当作模型或 Jev 质量结果。
 
+## 小型 masked-diffusion proposal 试验
+
+从 [BabyLM 2026 Strict-Small MDLM 模型卡](https://huggingface.co/amosluna/babylm-2026-strict-small-mdlm-seed42) 下载了 Apache-2.0 的 98.4M 参数 checkpoint（约 377 MiB，权重不进 Git），在远端空闲 GPU 2 上成功加载。三个不同长度/去噪步数的完整 proposal 通过 `ParallelCandidateGenerator` 并行调度，单次约 0.34–0.44 秒；这是接口和调度验证，不是质量结果。
+
+初始无约束运行会在所有位置生成 `[EOS]`，加上特殊控制 token 抑制后，英文样例仍出现大量重复词或乱码片段。这个失败很有价值：masked-diffusion 的双向去噪输出不能直接当作 AR next-token logits，必须有长度/特殊 token 约束、结构化 validator 和 Jev 的拒绝/重提案出口。该实验暂不把候选交给真实 Jev，也没有执行任何工具。
+
 ## 已知限制与护栏
 
 依赖版本、记忆召回和 `CLARIFY/STOP_UNRESOLVED` 已有基础实现；结构化 state packet、`REVIEW` 通道和通用精确算术路由仍是拟议优化，尚无缓解收益实验。用户提供的 Context Rot / No Rationale 等描述作为待检验假设保留，尚未独立核实其来源或因果解释。详细说明见 [JEV_LIMITATIONS_AND_GUARDRAILS.md](JEV_LIMITATIONS_AND_GUARDRAILS.md)。
