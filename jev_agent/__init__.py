@@ -7,6 +7,7 @@ from .memory import DependencyIndex, MemoryBank, MemoryRecord
 from .models import Candidate, ChoiceOption, ChoiceResult, TaskState
 from .option_space import OptionSpace, OptionSpaceRegistry, SpaceOption
 from .paged_memory import MemoryPage, PageCandidate, PagedMemoryIndex, StaleMemoryPage
+from .state_machine import CompiledDecisionRule, DecisionTraceGraph, ErrorSummaryQueue, TraceEdge
 from .topk import TopKBuilder, TopKResult, TransformersLogitsBackend
 
 __all__ = [
@@ -30,6 +31,10 @@ __all__ = [
     "OptionSpace",
     "OptionSpaceRegistry",
     "SpaceOption",
+    "CompiledDecisionRule",
+    "DecisionTraceGraph",
+    "ErrorSummaryQueue",
+    "TraceEdge",
     "TaskState",
     "ToolDefinition",
     "TopKBuilder",

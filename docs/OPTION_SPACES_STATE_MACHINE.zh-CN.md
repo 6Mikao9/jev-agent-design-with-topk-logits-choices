@@ -64,6 +64,11 @@
 
 当一段子图在固定版本和多次回放中稳定成功，可以编译成“自动决策边”：满足 guard、schema、依赖版本和覆盖阈值时跳过 Jev/小模型；发生 drift、未知输入或失败时立即回退到原始模型决策，并保留编译前后的对照 trace。自动图不是永久规则，必须有版本、撤销和人工复核入口。
 
+`jev_agent.state_machine.DecisionTraceGraph` 已提供最小实现：可以从 trace 生成
+Mermaid `stateDiagram-v2`，统计成功/失败边，并只编译达到观察次数和成功率阈值的
+边。`ErrorSummaryQueue` 将错误交给异步摘要器，按节点、工具、schema 版本和错误类
+型聚合；它不会自动改变主链路的选择。
+
 ## 6. 分区上下文布局
 
 ```text
