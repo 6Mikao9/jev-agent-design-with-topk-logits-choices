@@ -50,6 +50,7 @@
 16. **Adaptive set materialization（计划）**：根据当前状态选择值得 materialize 的最小 page subset，估计 `ΔV(page)=V(S∪page)-V(S)` 与成本的关系；比较固定 top-p、固定 top-k 和自适应集合。该方向与 value-based retrieval stopping 有关，作用对象扩大到整个 OptionSpace 变换，不能宣称单点原创。
 17. **Learned Governor 安全层（计划）**：用 learned controller 负责效率，用 conformal/calibrated safety envelope 限制高风险 COMMIT；校准不足时只能 PAGE/REFINE/FALLBACK/CLARIFY。验收包括风险覆盖率、错误提交率、拒绝率、额外延迟和分布外状态。
 18. **Candidate proposer 接口（计划）**：扩散模型、small AR、retriever、compiler 和历史 prior 都实现同一 proposer 接口；扩散模型只作为并行候选生成器，不作为论文 headline 或决策者。评估 proposal recall、Jev 选择成本和失败回退。
+18a. **Speculative Option-Space Transitions（计划）**：把性能优化限制在独立的 `SpeculationSpace`：小模型/历史/局部性只预取无副作用的下一页或已选粗选项的 refinement 草案，绝不污染当前 Jev resident set。先比较关闭、top-1/top-2 `PAGE` 预取和固定下一页；只有 Jev 提交父级转移并通过 schema、权限、依赖和 revision guard 后才 promote，猜错或 stale 直接丢弃。首版只做 depth=1，候选融合先用单一排序，不能把 logits 当作未经校准的 page 概率。记录命中率、有效预取比、`min(准备耗时,Jev等待窗口)`、page stall、浪费比、stale 丢弃、额外 IO、helper 调用和任务成功率。`REFINE` 树、深度大于 1、radix/trie 共享前缀和 learned governor 是后续项；没有共享前缀时不强行使用 trie。该方向借鉴 speculative execution/prefetch 先例，贡献候选是对 PAGE/REFINE 决策空间的调度与一致性验证，不作单点首创声明。
 
 ## P2：记忆系统和工程化扩展
 

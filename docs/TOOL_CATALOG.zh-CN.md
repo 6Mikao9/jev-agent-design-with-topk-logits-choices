@@ -15,11 +15,14 @@
 | 名称 | 参数 | 能力/边界 |
 |---|---|---|
 | `file.read` | `path: string`；`max_bytes?: integer` | workspace 相对路径，默认最多 65,536 字节，硬上限 1 MB；UTF-8 |
-| `file.write` | `path: string, text: string` | workspace 相对路径，最多 1 MB；可创建父目录、覆盖目标文件 |
+| `file.write` | `path: string, text: string` | workspace 相对路径，最多 1 MB；可创建父目录、覆盖目标文件；拒绝符号链接写入路径 |
 | `file.list` | `path?: string, limit?: integer` | 单层列举；默认 `.`、100 项，最多 500 项 |
+| `file.search` | `text: string`；`path?: string`；`case_sensitive?: boolean`；`max_files?: integer`；`max_bytes?: integer`；`max_matches?: integer` | 字面 UTF-8 文本搜索；默认最多扫描 200 个文件/2 MB，最多返回 200 个匹配；硬上限 2,000 文件/20 MB/2,000 项；不跟随符号链接 |
+| `file.replace_text` | `path: string, old_text: string, replacement: string, expected_count: integer`；`expected_text?: string`；`expected_sha256?: string` | 必须提供完整当前内容或 SHA-256 之一作为 guard；匹配次数必须精确；临时文件 + 原子替换；1 MB 硬上限 |
+| `directory.create` | `path: string`；`exist_ok?: boolean` | workspace 内递归创建目录；拒绝符号链接路径 |
 | `json.read` | `path: string` | workspace 内 JSON，最多 1 MB |
 | `json.write` | `path: string, value: any JSON` | workspace 内格式化 JSON，最多 1 MB |
-| `shell.run` | `argv: string[]`；`cwd?: string`；`timeout_seconds?: integer` | `shell=False`；默认仅 `git status/diff/log/show/rev-parse`，工作目录必须在 workspace 内，超时最多 15 秒；stdout/stderr 截断 |
+| `shell.run` | `argv: string[]`；`cwd?: string`；`timeout_seconds?: integer` | `shell=False`；默认仅 `git status/diff/log/show/rev-parse`，工作目录必须在 workspace 内，默认超时 10 秒（最多 30 秒），stdout/stderr 各最多保留 32 KB（配置硬上限 1 MB） |
 | `http.request` | `method: GET\|POST, url: string`；`headers?: object`；`body?: string` | 占位，不发送请求；需要后续显式实现传输层、域名 allowlist 和策略 |
 | `browser.act` | `action: open\|click\|type\|snapshot`；`target?: string` | 占位，不连接浏览器 |
 | `computer.use` | `action: observe\|click\|type\|key`；`target?: string` | 占位，不控制桌面 |
@@ -28,9 +31,9 @@
 
 ### 沙箱边界与集成注意事项
 
-- 路径必须相对 workspace，拒绝 `..`、绝对路径及解析后逃出 workspace 的符号链接。目录列举不递归。实现不能消除并发运行时的符号链接竞态；需要对抗 workspace 内不可信并发写入时，应使用 OS 容器/权限隔离。
-- 文件写入会覆盖同名文件，因此上层策略应对有影响的写入选择 `human.review` 或另外配置审批包装器。
-- shell 默认不含 `python`、PowerShell 或通用 shell。Git 子命令有读操作 allowlist；集成方传入 `allowed_commands` 扩展时，等同于授予这些程序的代码执行权限，必须自行审计其参数、环境和副作用。
+- 路径必须相对 workspace，拒绝 `..`、绝对路径及解析后逃出 workspace 的符号链接。目录列举不递归；搜索不跟随符号链接目录或文件。文件搜索、结果数和单文件写入都有硬上限。实现不能消除并发运行时的符号链接竞态；需要对抗 workspace 内不可信并发写入时，应使用 OS 容器/权限隔离。
+- `file.replace_text` 在写前核验调用方提供的完整旧文本或其 SHA-256、以及精确匹配次数，再同目录临时文件原子替换，并重读文件检测准备阶段的并发修改。原子替换避免部分写入；跨进程并发修改在最后一次核验和替换之间仍存在很小竞态窗口。要更强保证需外部锁或隔离写者。普通 `file.write` 和 `json.write` 仍可覆盖目标文件。
+- `shell.run` 默认只允许 Git 的只读子命令，不允许任意 shell。集成方可通过 `build_local_catalog(workspace, allowed_commands=("git", "python"))` 显式启用程序；调用仍是 argv 直传、`shell=False`、cwd 固定在 workspace 内，并有超时和有界输出。但程序 allowlist **不等于 OS 沙箱**：获准的 Python 代码可以访问该进程权限可及的文件、环境和子进程。启用 Python 项目演示命令时，只应在隔离 Docker/容器中运行，并将 workspace、凭证、网络和挂载一并收紧；不要将它用于不可信代码。
 - 所有 schema 是 Agent 所用的轻量子集。直接调用 executor 的内部代码也应先调用 `validate_json_schema`；executor 层仍设有路径、大小、超时等硬边界。
 - HTTP、浏览器、电脑使用能力通过候选目录可见，但未由 `catalog_as_tool_definitions` 暴露，且占位执行器只返回 `unavailable`。这让 Jev 可识别“需要此能力”，同时不会误认为已发生外部操作。
 

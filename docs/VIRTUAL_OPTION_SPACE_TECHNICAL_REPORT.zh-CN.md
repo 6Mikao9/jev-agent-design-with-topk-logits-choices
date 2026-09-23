@@ -99,9 +99,21 @@ Jev 分布中若 `P(NEXT_PAGE|s_t)>τ_page`，可异步准备下一页；若某�
 
 **P1 机制**：实现 LRU/LFU/semantic replacement、按空间配额、页级指标、概率校准与阈值 prefetch；加入动态文件/实体页和失效通知。
 
+### 9.1 Speculative Option-Space Transitions（研究计划）
+
+这是 Virtual Option Space 的性能优化，而不是新的决策语义。runtime 可以在等待 Jev 返回时，用小模型、历史转移频率、局部性和当前阶段预测下一步可能的 `PAGE` 或 `REFINE`，把只读索引、摘要、schema 和候选草案放入独立的 **Speculation Space**。当前可提交的 `Resident Space` 不得看到这些草案；只有 Jev 明确提交了对应的父级转移，并通过 state/schema/permission/revision guard 后，草案才能 promote。猜错、状态变化或权限变化时直接丢弃，不能造成工具副作用。
+
+统一记法为 `τ:(O_t,s_t)→(O_{t+1},s_{t+1})`。预测器只 materialize `\hat τ_1…\hat τ_B`，命中条件是 Jev 的真实转移属于预测集合。Jev 的返回不能单独视为验证结果；promote 前仍要重新检查状态、schema、权限和 revision。`PAGE` 预取通常比 `REFINE` 子树便宜，应先只做 top-1/top-2 PAGE；radix/trie 只有在工具名、字段名或路径确实共享前缀时才使用，平坦页不强行树化。首版只允许 depth=1；多分支、深度大于 1 和 learned governor 都要在单页预取有正收益后再做。
+
+预取是否值得由净收益决定，而不是由概率阈值单独决定：
+
+`EV(b)=P(hit)×saved_latency−speculation_cost`。
+
+预算至少限制 speculative nodes、只读字节、helper/IO 调用和并发任务；取消、资源争用、淘汰和 stale 丢弃也要计入成本。候选分数不能未经校准就线性相加 `P_small`、上次 Jev 分布和局部性；首版先做单一排序基线，之后在验证集校准融合。首轮评估比较关闭、top-1、top-2 和固定下一页，报告 `PrefetchHitRate`、`UsefulPrefetchRatio`、page stall、`hidden_latency=min(准备耗时,Jev等待窗口)`、浪费比、额外 IO、stale 丢弃率和任务成功率。不能把“命中预取”直接写成端到端加速，也不能把该机制表述为首次 speculative execution；相关工作已有 token、检索和工具预取先例，本项目只验证它在 PAGE/REFINE 虚拟决策空间中的调度与一致性。
+
 **P2 评测**：接入真实 Jev 与 proxy/oracle 对照，提供回放、权限拒绝、schema drift、stale、重复 fault 和工具副作用隔离。
 
-当前代码已有 OptionSpace 的有限页、PagedMemoryIndex、TwoStageMemorySelector、state trace 和 `VirtualOptionManager` 基础原型；异步 prefetch、学习型 replacement、异构统一 resolver、持久化页表和完整 scaling benchmark 仍待实现。文档中的目标、伪代码和设计不能写成已完成能力。
+当前代码已有 OptionSpace 的有限页、PagedMemoryIndex、TwoStageMemorySelector、state trace 和 `VirtualOptionManager` 基础原型；异步 prefetch、Speculative Space、学习型 replacement、异构统一 resolver、持久化页表和完整 scaling benchmark 仍待实现。文档中的目标、伪代码和设计不能写成已完成能力。
 
 ## 10. 可运行实验矩阵与消融
 

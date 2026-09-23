@@ -1,6 +1,7 @@
 """Jev-native tool-agent research prototype."""
 
 from .agent import Agent, AgentResult, ToolDefinition
+from .arguments import ArgumentField, ArgumentInput, ArgumentInputResult, FieldContext, ValueProposal
 from .context_residency import ContextBlock, ContextCandidate, ContextFault, ContextResidencyManager
 from .decision_model import ChoiceBackendAdapter, DecisionModel, DecisionRequest, OracleDecisionModel, ReplayDecisionModel
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
@@ -32,6 +33,11 @@ from .virtual_option import (
 __all__ = [
     "Agent",
     "AgentResult",
+    "ArgumentField",
+    "ArgumentInput",
+    "ArgumentInputResult",
+    "FieldContext",
+    "ValueProposal",
     "ContextBlock",
     "ContextCandidate",
     "ContextFault",

@@ -72,7 +72,14 @@ class TopKBuilder:
         dialogue_end_option_id: str = "END_DIALOGUE",
         min_output_tokens: int = 1,
         allow_end: Callable[[str], bool] | None = None,
+        finish_option_id: str = "FINISH",
+        choice_cap: int | None = None,
+        allow_eos: bool = True,
     ) -> None:
+        if choice_cap is not None and choice_cap < 8 + int(allow_end is not None):
+            raise ValueError("choice_cap must leave room for recovery controls and a token")
+        if finish_option_id in (set(self.RECOVERY) - {"FINISH"}) | {dialogue_end_option_id}:
+            raise ValueError("finish option collides with a control")
         self.helper = helper
         self.chooser = chooser
         self.initial_k = initial_k
@@ -85,6 +92,9 @@ class TopKBuilder:
         self.dialogue_end_option_id = dialogue_end_option_id
         self.min_output_tokens = min_output_tokens
         self.allow_end = allow_end
+        self.finish_option_id = finish_option_id
+        self.choice_cap = choice_cap
+        self.allow_eos = allow_eos
 
     def construct(
         self,
@@ -111,7 +121,12 @@ class TopKBuilder:
                 return TopKResult("budget_exhausted", state.value, len(choices), helper_calls, choices, "call or time budget exhausted")
 
             started = perf_counter()
-            tokens = self.helper.next_top_k(state=state, k=k)
+            # Count controls in the same resident budget as token candidates.
+            finished = complete(state.value)
+            control_count = 5 + int(finished) + int(k < self.max_k)
+            control_count += int(self.allow_end is not None and len(state.token_ids) >= self.min_output_tokens)
+            offered_k = k if self.choice_cap is None else min(k, self.choice_cap - control_count)
+            tokens = self.helper.next_top_k(state=state, k=offered_k)[:offered_k]
             helper_calls += 1
             if perf_counter() - started_at >= self.time_budget_seconds:
                 return TopKResult("budget_exhausted", state.value, len(choices), helper_calls, choices, "time budget exhausted")
@@ -119,6 +134,8 @@ class TopKBuilder:
             options: list[ChoiceOption] = []
             for token in tokens:
                 if token.is_eos:
+                    if not self.allow_eos or not finished:
+                        continue
                     options.append(
                         ChoiceOption(
                             token.option_id,
@@ -138,8 +155,8 @@ class TopKBuilder:
                         token,
                     )
                 )
-            if complete(state.value):
-                options.append(ChoiceOption("FINISH", self.RECOVERY["FINISH"]))
+            if finished:
+                options.append(ChoiceOption(self.finish_option_id, self.RECOVERY["FINISH"]))
             if (
                 self.allow_end is not None
                 and len(state.token_ids) >= self.min_output_tokens
@@ -199,7 +216,7 @@ class TopKBuilder:
                     "END_DIALOGUE selected before completion predicate",
                 )
 
-            if result.choice == "FINISH":
+            if result.choice == self.finish_option_id:
                 if complete(state.value):
                     return TopKResult("complete", state.value, len(choices), helper_calls, choices)
                 return TopKResult("failed", state.value, len(choices), helper_calls, choices, "FINISH selected for invalid prefix")

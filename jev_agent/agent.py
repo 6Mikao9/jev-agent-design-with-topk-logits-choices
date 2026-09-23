@@ -17,6 +17,13 @@ class ToolDefinition:
     schema_version: str
     parameters_schema: dict[str, Any]
     executor: Callable[[dict[str, Any]], Any]
+    argument_validator: Callable[[dict[str, Any]], None] | None = None
+
+
+def validate_tool_arguments(tool: ToolDefinition, arguments: dict[str, Any]) -> None:
+    validate_json_schema(arguments, tool.parameters_schema)
+    if tool.argument_validator is not None:
+        tool.argument_validator(deepcopy(arguments))
 
 
 @dataclass
@@ -103,7 +110,7 @@ class Agent:
             if candidate.tool_name != tool.name or not candidate.is_current(state, tool.schema_version):
                 continue
             try:
-                validate_json_schema(candidate.arguments, tool.parameters_schema)
+                validate_tool_arguments(tool, candidate.arguments)
             except SchemaError:
                 continue
             valid.append(candidate)
@@ -145,7 +152,7 @@ class Agent:
                     memory_ids=memory_ids,
                 )
             try:
-                validate_json_schema(chosen.arguments, tool.parameters_schema)
+                validate_tool_arguments(tool, chosen.arguments)
             except SchemaError as exc:
                 return AgentResult(
                     "invalid_after_choice",
@@ -224,7 +231,7 @@ class Agent:
                 target = target[name]
             target[fallback_field[-1]] = generated.value
             try:
-                validate_json_schema(arguments, tool.parameters_schema)
+                validate_tool_arguments(tool, arguments)
             except SchemaError as exc:
                 return AgentResult(
                     "invalid_after_fallback",
