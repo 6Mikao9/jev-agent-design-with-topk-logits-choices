@@ -204,7 +204,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第2轮：24 步状态依赖恢复基线。** 新增 `benchmarks/benchmark_stateful_recovery_workload.py`：隐藏 quota/used/version 状态、一次合法但过期的工具读数、revision 失效和源事实刷新，resident 上限为 3。结果为 1 次矛盾检测、3 条历史失效、2 次恢复成功、0 外部副作用；远端完整测试 148/148。相对预期：比最低预期好，证明 revision/invalidation 安全边界；但这是确定性离线控制器，不是 Jev 选择质量，也没有让重建 context 驱动后续决策。报告为 `docs/reports/2026-09-24-stateful-recovery-workload.zh-CN.md`。早先直接接 `DecisionRuntime` 的尝试因恢复模型反复选择 `PAGE:recovery` 而 0 次提交，已删除并记录为下一轮 runtime 有界 recovery 状态的修复目标。
 
-- **第3轮：统一 runtime 恢复闭环与页面边界。** `DecisionRuntime.step()` 增加按 task/revision 隔离的 PAGE 重试预算；完整驻留页不再重复暴露 PAGE；`TaskState.revision` 与 `VirtualOption.revision` 分开校验；`VirtualOptionManager.page()` 提供 O(1) 页定位，`prefetch()` 变为有界只读 shadow，不改 resident。`benchmarks/benchmark_runtime_stateful_recovery.py` 通过 24 步 scripted runtime 闭环：PAGE 1 次、提交 2 次、1 次矛盾、1 次失效、1 次恢复、后续 quota 依赖动作正确，resident 峰值 4/8，副作用 2。远端完整测试 153/153。相对预期：明显好于上一版 runtime 直接接入失败；仍不是真实 Jev 质量结果。报告为 `docs/reports/2026-09-24-runtime-stateful-recovery.zh-CN.md`。下一步接真实 Jev、无 oracle locator 和多状态恢复矩阵。
+- **第3轮：统一 runtime 恢复闭环与页面边界。** `DecisionRuntime.step()` 增加按 task/revision 隔离的 PAGE 重试预算；完整驻留页不再重复暴露 PAGE；`TaskState.revision` 与 `VirtualOption.revision` 分开校验；`VirtualOptionManager.page()` 提供 O(1) 页定位，`prefetch()` 变为有界只读 shadow，不改 resident。`benchmarks/benchmark_runtime_stateful_recovery.py` 通过 24 步 scripted runtime 闭环：PAGE 1 次、提交 2 次、1 次矛盾、1 次失效、1 次恢复、后续 quota 依赖动作正确，resident 峰值 4/8，副作用 2。远端完整测试 154/154。相对预期：明显好于上一版 runtime 直接接入失败；仍不是真实 Jev 质量结果。报告为 `docs/reports/2026-09-24-runtime-stateful-recovery.zh-CN.md`。下一步接真实 Jev、无 oracle locator 和多状态恢复矩阵。
 
 
 

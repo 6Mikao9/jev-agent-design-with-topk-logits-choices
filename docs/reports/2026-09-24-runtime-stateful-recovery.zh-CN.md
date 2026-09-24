@@ -29,7 +29,7 @@
 | post_refresh_correct | true |
 | resident_peak / bound | 4 / 8 |
 | external_side_effects | 2 |
-| 完整远端测试 | 153/153 通过 |
+| 完整远端测试 | 154/154 通过 |
 
 机器可读结果：`benchmarks/results/runtime-stateful-recovery.json`。
 
