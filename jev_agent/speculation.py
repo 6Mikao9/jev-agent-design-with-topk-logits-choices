@@ -9,7 +9,10 @@ a page probability without an explicit predictor.
 from __future__ import annotations
 
 from copy import deepcopy
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
+from threading import Lock
+from time import monotonic
 from typing import Callable, Iterable, Sequence
 
 from .virtual_option import OptionFault, OptionPage, StaleVirtualOption, VirtualOption, VirtualOptionManager
@@ -45,15 +48,101 @@ class SpeculationBuffer:
         self.max_options = max_options
         self._pages: dict[str, ShadowPage] = {}
         self.events: list[SpeculationEvent] = []
+        self._pending: list[Future[ShadowPage]] = []
+        self._executor: ThreadPoolExecutor | None = None
+        self._lock = Lock()
 
     def prepared(self) -> tuple[ShadowPage, ...]:
         return tuple(deepcopy(tuple(self._pages.values())))
 
     def clear(self, *, reason: str = "cancelled") -> None:
+        for future in self._pending:
+            future.cancel()
+        self._pending.clear()
+        if self._executor is not None:
+            self._executor.shutdown(wait=False, cancel_futures=True)
+            self._executor = None
         for page in tuple(self._pages.values()):
             self.events.append(SpeculationEvent("discard", page.page_id, page.base_revision,
                                                 page.prepare_cost_ms, reason))
         self._pages.clear()
+
+    @staticmethod
+    def _prepare_page(page: OptionPage, *, base_revision: int, limit: int | None,
+                      max_options: int, prepare_cost_ms: Callable[[OptionPage], float] | None) -> ShadowPage:
+        selected = page.options if limit is None else page.options[:limit]
+        if len(selected) > max_options:
+            raise ValueError("option_budget")
+        cost = float(prepare_cost_ms(page)) if prepare_cost_ms else 0.0
+        if cost < 0:
+            raise ValueError("prepare cost must be non-negative")
+        return ShadowPage(page.page_id, base_revision, page.revision,
+                          tuple(deepcopy(selected)), cost)
+
+    def prefetch_async(
+        self,
+        manager: VirtualOptionManager,
+        ranked_page_ids: Sequence[str],
+        *,
+        base_revision: int,
+        limit: int | None = None,
+        prepare_cost_ms: Callable[[OptionPage], float] | None = None,
+    ) -> tuple[Future[ShadowPage], ...]:
+        """Schedule bounded shadow-page materialization without changing residency."""
+        if isinstance(base_revision, bool) or base_revision < 1:
+            raise ValueError("base_revision must be positive")
+        self.clear(reason="replaced")
+        pages = {page.page_id: deepcopy(page) for page in manager.pages()}
+        selected: list[OptionPage] = []
+        seen: set[str] = set()
+        for page_id in ranked_page_ids:
+            if page_id in seen or len(selected) >= self.max_pages:
+                continue
+            seen.add(page_id)
+            page = pages.get(page_id)
+            if page is None:
+                self.events.append(SpeculationEvent("skip", page_id, base_revision, reason="unknown_page"))
+                continue
+            selected.append(page)
+        self._executor = ThreadPoolExecutor(max_workers=max(1, len(selected)),
+                                             thread_name_prefix="jev-speculation")
+        self._pending = [self._executor.submit(
+            self._prepare_page, page, base_revision=base_revision, limit=limit,
+            max_options=self.max_options, prepare_cost_ms=prepare_cost_ms)
+            for page in selected]
+        for page in selected:
+            self.events.append(SpeculationEvent("scheduled", page.page_id, base_revision))
+        return tuple(self._pending)
+
+    def await_materialization(self, *, timeout_seconds: float | None = None) -> tuple[ShadowPage, ...]:
+        """Collect futures; failed pages are audited and never promoted."""
+        if timeout_seconds is not None and timeout_seconds < 0:
+            raise ValueError("timeout_seconds must be non-negative")
+        deadline = None if timeout_seconds is None else monotonic() + timeout_seconds
+        pending = list(self._pending)
+        self._pending.clear()
+        try:
+            for future in pending:
+                remaining = None if deadline is None else max(0.0, deadline - monotonic())
+                try:
+                    shadow = future.result(timeout=remaining)
+                except Exception as error:
+                    self.events.append(SpeculationEvent("failed", "unknown", 0,
+                                                        reason=type(error).__name__))
+                    continue
+                with self._lock:
+                    self._pages[shadow.page_id] = shadow
+                self.events.append(SpeculationEvent("prepared", shadow.page_id,
+                                                    shadow.base_revision, shadow.prepare_cost_ms))
+        finally:
+            if self._executor is not None:
+                self._executor.shutdown(wait=False, cancel_futures=True)
+                self._executor = None
+        return self.prepared()
+
+    @property
+    def pending_count(self) -> int:
+        return len(self._pending)
 
     def prefetch(
         self,
@@ -83,13 +172,11 @@ class SpeculationBuffer:
                 self.events.append(SpeculationEvent("skip", page_id, base_revision,
                                                     reason="option_budget"))
                 continue
-            cost = float(prepare_cost_ms(page)) if prepare_cost_ms else 0.0
-            if cost < 0:
-                raise ValueError("prepare cost must be non-negative")
-            shadow = ShadowPage(page.page_id, base_revision, page.revision,
-                                tuple(deepcopy(selected)), cost)
+            shadow = self._prepare_page(page, base_revision=base_revision, limit=limit,
+                                        max_options=self.max_options, prepare_cost_ms=prepare_cost_ms)
             self._pages[page_id] = shadow
-            self.events.append(SpeculationEvent("prepared", page_id, base_revision, cost))
+            self.events.append(SpeculationEvent("prepared", page_id, base_revision,
+                                                shadow.prepare_cost_ms))
         return self.prepared()
 
     def promote(
