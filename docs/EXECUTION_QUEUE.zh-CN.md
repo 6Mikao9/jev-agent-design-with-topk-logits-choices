@@ -64,7 +64,7 @@
 
 ## P3：论文和新颖性核验
 
-24a. **新颖性边界审计（本轮完成）**：已由 Luna 复核公开论文、GitHub 和 Jev 社区项目。确认不能声称首个 Jev agent、首个动态词表或首个上下文虚拟内存；可主张的候选是“据检索未发现的 DecisionModel 选项空间 demand paging + PAGE/REFINE/INVALIDATE + cache-agnostic context residency 组合”。详见 [新颖性审计](NOVELTY_AUDIT.zh-CN.md)。检索范围和日期必须随论文保留，后续用相关工作表和无 oracle 的端到端实验验证。
+24a. **新颖性边界审计（本轮完成）**：已由 Luna 复核公开论文、GitHub 和 Jev 社区项目。确认不能声称首个 Jev agent、首个动态词表或首个上下文虚拟内存；可主张的候选是“据检索未发现的 DecisionModel 选项空间 demand paging + PAGE/REFINE/INVALIDATE + cache-agnostic context residency 组合”。详细检索记录保留在本机内部笔记，公开论文仍需保留检索范围和日期，并用相关工作表和无 oracle 的端到端实验验证。
 
 24. **相关工作审计**：核对 Jev memory、RAG、RAPTOR、GraphRAG、MemGPT/Letta、工具选择、状态机编译、扩散 proposal 和超远捞针工作，区分已有组件、组合创新和真正尚未验证的贡献候选。
 25. **DeepSeek 架构小模型调查**：查找公开、许可证清晰、尺寸足够小的同架构科研模型；没有合适模型时记录检索范围和否定结果，不强行下载替代品。
