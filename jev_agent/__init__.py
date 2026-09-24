@@ -12,6 +12,7 @@ from .context_materialization import (
     MaterializedContext,
     StaleContextMaterialization,
 )
+from .context_recovery import ContextEvidenceFallback, ContextEvidenceRecoveryResult
 from .decision_model import ChoiceBackendAdapter, DecisionModel, DecisionRequest, OracleDecisionModel, ReplayDecisionModel
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
@@ -64,6 +65,8 @@ __all__ = [
     "ContextSourceNotFound",
     "MaterializedContext",
     "StaleContextMaterialization",
+    "ContextEvidenceFallback",
+    "ContextEvidenceRecoveryResult",
     "ChoiceBackendAdapter",
     "DecisionModel",
     "DecisionRequest",

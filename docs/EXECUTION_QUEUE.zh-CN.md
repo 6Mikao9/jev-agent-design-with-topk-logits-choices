@@ -191,5 +191,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第14轮：正文 materialization 契约。** 新增显式 source mapping/callback 的 `ContextMaterializer`，按 UTF-8 字节预算、stale/expected revision 和 SHA-256 返回正文；它不直接读任意路径、不改变 resident set。4 个代理 case 中 2 个摘要遗漏 marker 成功回读，stale 和超预算各 1 个被拒绝；远端 130 项测试通过。报告为 `docs/reports/2026-09-24-context-materialization.zh-CN.md`。下一步才是把真实 Jev 的 `NO_EVIDENCE` 接到正文回读与 evidence contract。
 
+- **第15轮：真实 Jev `NO_EVIDENCE` → raw evidence fallback。** 新增 `ContextEvidenceFallback`，只对目录候选有界 materialize 正文，检查完整 marker、唯一性和 revision 后再提交。5 个真实 case 中，初始 gold 命中 1/4；Jev coordinator 直接命中 3/4；加入 fallback 后最终 gold 命中 4/4，3 个缺失 case 恢复 3/3；无 gold 歧义安全拒绝。20 次调用 P50/P95 为 690.6/767.7 ms。报告为 `docs/reports/2026-09-24-context-refresh-live-fallback.zh-CN.md`。这是 evidence-contract 价值，不是通用 Jev 准确率；目录漏召回和语义 evidence 仍待。
+
 
 

@@ -144,7 +144,7 @@ Open World / 新事件
 | 异步候选页 | `Shadow Option Space` | 过期、失败或 revision 不匹配时丢弃 | 重新 prefetch；只有显式 promote 才进入 resident |
 | 错误摘要与执行 trace | 外部 trace/evidence store | 默认不污染当前上下文 | 作为受控证据候选读取，不能直接当事实 |
 
-当前代码已经实现 `Pinned/Working/Cold`、稳定 ID、revision/stale guard、页表有界读取、受限 `ContextMaterializer` 和 option shadow buffer；多级目录、把正文 materializer 接入 live Jev 的 `NO_EVIDENCE` 回读、自动 trace 摘要和统一跨空间调度仍是后续工作。`ContextRefreshCoordinator` 是可关闭的实验策略，不改变这张边界图：它只负责从目录候选中验证并提交少量 working blocks。
+当前代码已经实现 `Pinned/Working/Cold`、稳定 ID、revision/stale guard、页表有界读取、受限 `ContextMaterializer`、`ContextEvidenceFallback` 和 option shadow buffer；多级目录、自动 trace 摘要和统一跨空间调度仍是后续工作。`ContextRefreshCoordinator` 是可关闭的实验策略，不改变这张边界图：它只负责从目录候选中验证并提交少量 working blocks。
 
 ### 参数先验
 

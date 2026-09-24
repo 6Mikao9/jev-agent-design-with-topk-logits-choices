@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from jev_agent.context_materialization import ContextMaterializer
+from jev_agent.context_recovery import ContextEvidenceFallback
 from jev_agent.context_refresh import ContextRefreshCoordinator, JevContextVerifier
 from jev_agent.context_residency import ContextBlock, ContextFault, ContextResidencyManager
 from jev_agent.jev_client import TypeSafeJevChooser
@@ -30,30 +32,35 @@ CASES = (
         "query": "What is the current Atlas production rollout plan?",
         "initial_query": "unrelated historical note",
         "target": "b17",
+        "markers": ("source=deployment-plan", "route=canary-stable"),
     },
     {
         "name": "missing_rollback",
         "query": "Which rollback plan should be used after a failed Atlas deployment?",
         "initial_query": "unrelated historical note",
         "target": "b63",
+        "markers": ("source=rollback", "restore-stable"),
     },
     {
         "name": "missing_audit_evidence",
         "query": "Find the current approval evidence needed for the Atlas audit.",
         "initial_query": "unrelated historical note",
         "target": "b88",
+        "markers": ("source=approval-service", "audit=current"),
     },
     {
         "name": "already_resident",
         "query": "Use the current Atlas production rollout plan.",
         "initial_query": "Use the current Atlas production rollout plan.",
         "target": "b17",
+        "markers": ("source=deployment-plan", "route=canary-stable"),
     },
     {
         "name": "ambiguous_atlas_plan",
         "query": "Which Atlas plan should be used?",
         "initial_query": "unrelated historical note",
         "target": None,
+        "markers": ("source=nonexistent",),
     },
 )
 
@@ -121,6 +128,17 @@ def build_manager() -> ContextResidencyManager:
     return manager
 
 
+def raw_bodies() -> dict[str, str]:
+    return {
+        "raw://deploy-current": "entity=Atlas; source=deployment-plan; route=canary-stable",
+        "raw://deploy-history": "entity=Atlas; source=historical-plan; route=old",
+        "raw://rollback": "entity=Atlas; source=rollback; restore-stable",
+        "raw://audit-current": "entity=Atlas; source=approval-service; audit=current; version=3",
+        "raw://audit-history": "entity=Atlas; source=historical-audit; audit=old",
+        "raw://noise": "entity=other; source=unrelated",
+    }
+
+
 def resident_hit(manager: ContextResidencyManager, target: str) -> bool:
     if target is None:
         return False
@@ -140,6 +158,7 @@ def run(chooser: RecordingChooser, *, max_cases: int = 4) -> dict:
 
         manager = build_manager()
         manager.rebuild(case["initial_query"])
+        revisions = {block.block_id: block.revision for block in manager.blocks()}
         coordinator = ContextRefreshCoordinator(manager, max_verifiers=4,
                                                  max_refreshes_per_phase=4,
                                                  cooldown_steps=0, max_workers=4)
@@ -149,6 +168,22 @@ def run(chooser: RecordingChooser, *, max_cases: int = 4) -> dict:
             top_m=4, load_k=1, reason="controlled_context_fault",
         )
         elapsed_ms = round((perf_counter() - started) * 1000, 3)
+        fallback_status = "not_attempted"
+        fallback_ids: tuple[str, ...] = ()
+        fallback_bytes = 0
+        if result.status == "no_supported_block":
+            fallback = ContextEvidenceFallback(
+                ContextMaterializer(raw_bodies(), max_bytes=512),
+                required_markers=case["markers"], max_candidates=4,
+            )
+            recovered = fallback.recover(manager, result.candidate_ids,
+                                          expected_revisions=revisions)
+            fallback_status = recovered.status
+            fallback_ids = recovered.recovered_ids
+            fallback_bytes = recovered.read_bytes
+            if recovered.status == "recovered":
+                manager.commit_selected(recovered.recovered_ids,
+                                        expected_revisions=revisions)
         gold_in_directory = case["target"] is not None and case["target"] in result.candidate_ids
         rows.append({
             "case": case["name"],
@@ -157,9 +192,12 @@ def run(chooser: RecordingChooser, *, max_cases: int = 4) -> dict:
             "selected_ids": list(result.selected_ids),
             "baseline_hit": baseline_hit,
             "refresh_hit": resident_hit(manager, case["target"]),
-            "target_selected": case["target"] in result.selected_ids,
+            "target_selected": case["target"] in result.selected_ids or case["target"] in fallback_ids,
+            "fallback_status": fallback_status,
+            "fallback_ids": list(fallback_ids),
+            "fallback_bytes": fallback_bytes,
             "gold_in_directory": gold_in_directory,
-            "false_refresh": case["target"] is None and bool(result.selected_ids),
+            "false_refresh": case["target"] is None and bool(result.selected_ids or fallback_ids),
             "no_evidence": any(item.reason == "NO_EVIDENCE" for item in result.verifications),
             "elapsed_ms": elapsed_ms,
             "stage_ms": result.stage_ms,
@@ -176,6 +214,8 @@ def run(chooser: RecordingChooser, *, max_cases: int = 4) -> dict:
                 "baseline_hits": sum(row["baseline_hit"] for row in rows),
                 "refresh_hits": sum(row["refresh_hit"] for row in rows),
                 "target_selected": sum(row["target_selected"] for row in rows),
+                "fallback_recovered": sum(row["fallback_status"] == "recovered" for row in rows),
+                "fallback_hits": sum(row["refresh_hit"] for row in rows),
                 "directory_hits": sum(row["gold_in_directory"] for row in rows),
                 "false_refreshes": sum(row["false_refresh"] for row in rows),
                 "no_evidence_results": sum(row["no_evidence"] for row in rows),
