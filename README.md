@@ -1,7 +1,7 @@
 
 ## 收敛后的研究定位（2026-09-24）
 
-本项目是面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。`PAGE/EXPAND` 增加候选覆盖，`REFINE` 降低候选粒度（完整 candidate → field → fragment → token）；Jev 始终做最终选择，helper logits 只是 refinement proposal。Top-k helper、fallback、confidence cascade、speculative decoding、FUDGE/GeDi、reward-guided decoding、Pydantic AI Jev fallback 均有近邻，不能声称单点新颖。贡献候选是 decision-space virtualization + decision-preserving progressive refinement 的 runtime 组合，仍待验证。
+本项目是面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。`PAGE/EXPAND` 增加候选覆盖，`REFINE` 降低候选粒度（完整 candidate → field → fragment → token）；Jev 始终做最终选择，helper logits 只是 refinement proposal。单点机制都有近邻；我们的候选贡献是把 decision-space virtualization、decision-preserving refinement、context residency 和 fault recovery 统一成可替换 DecisionModel runtime。新颖性范围与不可过度主张的先例见 [新颖性审计](docs/NOVELTY_AUDIT.zh-CN.md)。
 
 实验主线使用逻辑空间 10/100/1K/10K/100K、resident K=8/16/32，在删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、`+EXPAND_K`、`+BACKTRACK/LOOKUP/CLARIFY`，报告 RecoveryRate、coverage、cost、latency、state errors、side effects。BFCL coverage 仅表示 candidate availability，不等于 Jev accuracy。适用 workload 优先短字段、SQL、路径、JSON、工具参数；长篇自然语言仅作高成本实验。
 
@@ -47,6 +47,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - [选项空间、状态机与可展开记忆](docs/OPTION_SPACES_STATE_MACHINE.zh-CN.md)：工具/记忆/预测分区、错误记忆和 88 轮验证队列。
 - [Virtual Option Space 技术报告](docs/VIRTUAL_OPTION_SPACE_TECHNICAL_REPORT.zh-CN.md)：resident/non-resident 选项、OptionFault、页表、working set、prefetch、异构空间与实验矩阵。
 - [Option Space 页与调用预算](docs/OPTION_PAGE_BUDGET.zh-CN.md)：255-entry 目录页、控制项预留、8/16/32 decision batch、Jev 上下文上限与 AIOS 启发。
+- [新颖性与先例审计](docs/NOVELTY_AUDIT.zh-CN.md)：决策空间虚拟化、缓存无关上下文、动态 token 表和 Jev-native agent 的可主张边界。
 - [Context/Option budget 离线对照](docs/reports/2026-09-24-budget-ablation.zh-CN.md)：24/48 KiB 分区与 8/16/32/64 批次的容量基线。
 - [JEV 研究笔记](docs/JEV_RESEARCH_NOTES.zh-CN.md)：两阶段记忆、并行预测、超远捞针评测与失败边界。
 
