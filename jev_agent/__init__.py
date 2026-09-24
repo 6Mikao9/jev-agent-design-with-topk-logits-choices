@@ -13,6 +13,13 @@ from .context_materialization import (
     StaleContextMaterialization,
 )
 from .context_recovery import ContextEvidenceFallback, ContextEvidenceRecoveryResult
+from .context_budget import (
+    ContextBudget,
+    ContextBudgetController,
+    ContextBudgetExceeded,
+    ContextSlice,
+    PackedContext,
+)
 from .decision_model import ChoiceBackendAdapter, DecisionModel, DecisionRequest, OracleDecisionModel, ReplayDecisionModel
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
@@ -67,6 +74,11 @@ __all__ = [
     "StaleContextMaterialization",
     "ContextEvidenceFallback",
     "ContextEvidenceRecoveryResult",
+    "ContextBudget",
+    "ContextBudgetController",
+    "ContextBudgetExceeded",
+    "ContextSlice",
+    "PackedContext",
     "ChoiceBackendAdapter",
     "DecisionModel",
     "DecisionRequest",
