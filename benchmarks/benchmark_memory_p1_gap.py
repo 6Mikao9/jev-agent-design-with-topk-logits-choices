@@ -31,11 +31,12 @@ def _initial(meta: dict):
     return index, target_meta, result
 
 
-def run_episode(meta: dict, *, fallback: bool) -> dict:
+def run_episode(meta: dict, *, fallback: bool, retrieval: str = "hybrid") -> dict:
     index, target_meta, initial = _initial(meta)
     recovered = RawEvidenceFallback(
         required_markers=("source=primary-record",), max_candidates=8,
         max_pages=2, max_read_bytes=16_384, max_page_bytes=8_192,
+        retrieval=retrieval,
     ).recover(index, context=target_meta["query"], initial=initial) if fallback else None
     pages = recovered.pages if recovered is not None else initial.pages
     selected = {page.page_id for page in pages}
@@ -86,12 +87,15 @@ def run_suite() -> dict:
     metas = [{"position": position, "omission": omission, "state": state}
              for position in POSITIONS for omission in OMISSIONS for state in STATES]
     baseline = [run_episode(meta, fallback=False) for meta in metas]
-    recovered = [run_episode(meta, fallback=True) for meta in metas]
+    content = [run_episode(meta, fallback=True, retrieval="content") for meta in metas]
+    recovered = [run_episode(meta, fallback=True, retrieval="hybrid") for meta in metas]
     return {"experiment": "memory-p1-summary-gap-fallback-48",
             "config": {"episodes": len(metas), "required_markers": ["source=primary-record"],
                        "max_candidates": 8, "max_pages": 2, "max_scan_bytes": 65_536},
-            "baseline": _summary(baseline), "fallback": _summary(recovered),
-            "rows": [{"baseline": before, "fallback": after} for before, after in zip(baseline, recovered)],
+            "baseline": _summary(baseline), "content_fallback": _summary(content),
+            "hybrid_fallback": _summary(recovered),
+            "rows": [{"baseline": before, "content_fallback": raw, "hybrid_fallback": after}
+                     for before, raw, after in zip(baseline, content, recovered)],
             "limitations": ["Deterministic retrieval proxy, not live Jev quality.",
                             "The source marker is a task evidence contract, not a hidden target page id.",
                             "Raw scanning is bounded but not a vector or learned retriever."]}
@@ -104,7 +108,8 @@ def main() -> None:
     report = run_suite()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"baseline": report["baseline"], "fallback": report["fallback"]}, ensure_ascii=False))
+    print(json.dumps({"baseline": report["baseline"], "content_fallback": report["content_fallback"],
+                      "hybrid_fallback": report["hybrid_fallback"]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

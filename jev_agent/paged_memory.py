@@ -166,6 +166,49 @@ class PagedMemoryIndex:
             for score, page in scored[:limit]
         ]
 
+    def search_hybrid(
+        self,
+        context: str,
+        *,
+        required_markers: Iterable[str] = (),
+        limit: int = 16,
+        max_scan_bytes: int = 65_536,
+        allow_sensitive: bool = False,
+    ) -> list[PageCandidate]:
+        """Fuse summary and bounded raw-content ranks for recovery.
+
+        Raw evidence is weighted four times the summary rank so an explicit
+        evidence contract can recover a page whose summary is incomplete;
+        summary rank still breaks ties and helps when raw lexical evidence is
+        weak.  This is a deterministic weighted-RRF index operation, not a
+        Jev probability or a semantic-quality claim.
+        """
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        summary = self.select_pages(context, limit=max(limit * 2, limit), allow_sensitive=allow_sensitive)
+        content = self.search_content(
+            context, required_markers=required_markers, limit=max(limit * 2, limit),
+            max_scan_bytes=max_scan_bytes, allow_sensitive=allow_sensitive,
+        )
+        by_id = {candidate.page_id: candidate for candidate in summary}
+        by_id.update({candidate.page_id: candidate for candidate in content})
+        summary_rank = {candidate.page_id: rank for rank, candidate in enumerate(summary, 1)}
+        content_rank = {candidate.page_id: rank for rank, candidate in enumerate(content, 1)}
+        fused: list[tuple[float, str, PageCandidate]] = []
+        for page_id, candidate in by_id.items():
+            score = 0.0
+            if page_id in content_rank:
+                score += 4.0 / (60.0 + content_rank[page_id])
+            if page_id in summary_rank:
+                score += 1.0 / (60.0 + summary_rank[page_id])
+            fused.append((score, page_id, candidate))
+        fused.sort(key=lambda item: (-item[0], item[1]))
+        return [
+            PageCandidate(candidate.page_id, candidate.summary, score, candidate.revision,
+                          candidate.parent_id, candidate.tags)
+            for score, _, candidate in fused[:limit]
+        ]
+
     def read_selected(
         self,
         page_ids: Iterable[str],

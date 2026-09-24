@@ -28,6 +28,17 @@ class PagedMemoryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.index.upsert(MemoryPage("mem_03", "extra", "too many"))
 
+    def test_hybrid_search_prioritizes_explicit_raw_evidence(self):
+        index = PagedMemoryIndex()
+        index.upsert(MemoryPage("history", "deployment atlas current conflict", "source=historical-record"))
+        index.upsert(MemoryPage("primary", "deployment atlas archived note", "source=primary-record"))
+        result = index.search_hybrid("deployment atlas conflict", required_markers=("source=primary-record",), limit=2)
+        self.assertEqual(result[0].page_id, "primary")
+
+    def test_hybrid_search_rejects_invalid_limit(self):
+        with self.assertRaises(ValueError):
+            self.index.search_hybrid("Friday", limit=0)
+
 
 if __name__ == "__main__":
     unittest.main()

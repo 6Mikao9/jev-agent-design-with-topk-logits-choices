@@ -2,22 +2,22 @@
 
 脚本：`benchmarks/benchmark_memory_p1_gap.py`  
 报告数据：`benchmarks/results/memory-p1-gap-48.json`  
-本轮目标是把 P0 的“摘要-only 漏页”变成一个有边界的恢复路径：初始两阶段选择完成后，由任务验证器声明缺少证据标记，索引在扫描预算内检索原文，再使用相同 revision、敏感页和读字节限制读入补充页。
+本轮目标是把 P0 的“摘要-only 漏页”变成一个有边界的恢复路径：初始两阶段选择完成后，由任务验证器声明缺少证据标记，索引在扫描预算内检索原文，再使用相同 revision、敏感页和读字节限制读入补充页。恢复分别跑了 content-only 和 weighted-RRF hybrid 两个索引策略。
 
 ## 结果
 
 同一 48 个 episode 的实际结果如下：
 
-| 指标 | P0 summary-only | P1 gap fallback |
+| 指标 | P0 summary-only | P1 content fallback | P1 hybrid fallback |
 | --- | ---: | ---: |
-| page hit rate | 50.0% | 75.0% |
-| 原文证据召回 | 50.0% | 75.0% |
-| 答案正确率 | 50.0% | 75.0% |
-| guard safe rate | 100.0% | 100.0% |
-| fallback recovery rate | 0.0% | 25.0% |
-| 平均读取字节 | 374.0 B | 498.5 B |
+| page hit rate | 50.0% | 75.0% | 75.0% |
+| 原文证据召回 | 50.0% | 75.0% | 75.0% |
+| 答案正确率 | 50.0% | 75.0% | 75.0% |
+| guard safe rate | 100.0% | 100.0% | 100.0% |
+| fallback recovery rate | 0.0% | 25.0% | 25.0% |
+| 平均读取字节 | 374.0 B | 498.5 B | 498.5 B |
 
-P1 相对基线把三项召回/正确率都提高了 25 个百分点；额外读取约 33.3%，但没有牺牲 stale 安全性。恢复只发生在 12 个 conflict episode，fresh/distractor 不触发，stale 仍不尝试回读。
+P1 两种恢复策略相对基线都把三项召回/正确率提高了 25 个百分点；额外读取约 33.3%，但没有牺牲 stale 安全性。恢复只发生在 12 个 conflict episode，fresh/distractor 不触发，stale 仍不尝试回读。本轮 hybrid 与 content-only 持平，说明这组小矩阵还不足以证明融合排序优于原文 marker 排序，后续多针和摘要强干扰集需要单独扩大。
 
 重点指标定义如下：
 
@@ -26,7 +26,7 @@ P1 相对基线把三项召回/正确率都提高了 25 个百分点；额外读
 - `guard_safe_rate`：stale 选择是否仍被拒绝；
 - `mean_read_bytes`：正确率提升付出的额外读取量。
 
-结果比预期好：conflict 全部补回当前页，fresh/distractor 没有额外回读，stale guard 保持 100%。这只说明恢复机制在“证据契约明确”的条件下有效；它不能证明 Jev 自己能发现任意语义遗漏。
+结果比预期好：conflict 全部补回当前页，fresh/distractor 没有额外回读，stale guard 保持 100%；hybrid 没有带来额外回归。融合策略没有在本矩阵中带来额外提升，这个负结果会保留。这只说明恢复机制在“证据契约明确”的条件下有效；它不能证明 Jev 自己能发现任意语义遗漏。
 
 ## 机制边界
 

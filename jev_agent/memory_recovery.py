@@ -37,17 +37,21 @@ class RawEvidenceFallback:
         max_read_bytes: int = 16_384,
         max_page_bytes: int = 8_192,
         max_scan_bytes: int = 65_536,
+        retrieval: str = "hybrid",
     ) -> None:
         if not required_markers:
             raise ValueError("at least one evidence marker is required")
         if min(max_candidates, max_pages, max_read_bytes, max_page_bytes, max_scan_bytes) < 1:
             raise ValueError("fallback limits must be positive")
+        if retrieval not in {"content", "hybrid"}:
+            raise ValueError("retrieval must be content or hybrid")
         self.required_markers = tuple(required_markers)
         self.max_candidates = max_candidates
         self.max_pages = max_pages
         self.max_read_bytes = max_read_bytes
         self.max_page_bytes = max_page_bytes
         self.max_scan_bytes = max_scan_bytes
+        self.retrieval = retrieval
 
     def recover(
         self,
@@ -67,12 +71,9 @@ class RawEvidenceFallback:
             return EvidenceRecoveryResult("not_needed", initial.pages,
                                           read_bytes=initial.read_bytes)
 
-        candidates = index.search_content(
-            context,
-            required_markers=missing,
-            limit=self.max_candidates,
-            max_scan_bytes=self.max_scan_bytes,
-        )
+        search = index.search_hybrid if self.retrieval == "hybrid" else index.search_content
+        candidates = search(context, required_markers=missing, limit=self.max_candidates,
+                            max_scan_bytes=self.max_scan_bytes)
         selected = set(initial.selected_ids)
         extra = [candidate for candidate in candidates if candidate.page_id not in selected]
         if not extra:
