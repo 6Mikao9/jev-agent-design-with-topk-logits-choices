@@ -92,14 +92,13 @@ class SpeculationBuffer:
         if isinstance(base_revision, bool) or base_revision < 1:
             raise ValueError("base_revision must be positive")
         self.clear(reason="replaced")
-        pages = {page.page_id: deepcopy(page) for page in manager.pages()}
         selected: list[OptionPage] = []
         seen: set[str] = set()
         for page_id in ranked_page_ids:
             if page_id in seen or len(selected) >= self.max_pages:
                 continue
             seen.add(page_id)
-            page = pages.get(page_id)
+            page = manager.page(page_id)
             if page is None:
                 self.events.append(SpeculationEvent("skip", page_id, base_revision, reason="unknown_page"))
                 continue
@@ -162,7 +161,7 @@ class SpeculationBuffer:
             if page_id in seen or len(self._pages) >= self.max_pages:
                 continue
             seen.add(page_id)
-            page = next((item for item in manager.pages() if item.page_id == page_id), None)
+            page = manager.page(page_id)
             if page is None:
                 self.events.append(SpeculationEvent("skip", page_id, base_revision,
                                                     reason="unknown_page"))
@@ -195,7 +194,7 @@ class SpeculationBuffer:
             self.events.append(SpeculationEvent("discard", page_id, shadow.base_revision,
                                                 shadow.prepare_cost_ms, "state_revision_changed"))
             raise StaleVirtualOption(f"speculation is stale for state revision {current_revision}")
-        page = next((item for item in manager.pages() if item.page_id == page_id), None)
+        page = manager.page(page_id)
         if page is None or page.revision != shadow.page_revision:
             self._pages.pop(page_id, None)
             self.events.append(SpeculationEvent("discard", page_id, shadow.base_revision,

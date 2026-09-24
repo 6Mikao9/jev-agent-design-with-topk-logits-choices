@@ -34,6 +34,21 @@ class VirtualOptionTests(unittest.TestCase):
             manager.evict_lru(2, protected_ids=("a",))
         self.assertEqual([item.option_id for item in manager.resident_options()], ["a", "b"])
 
+    def test_prefetch_is_shadow_only(self):
+        manager = VirtualOptionManager(max_resident=1)
+        manager.register_page("p", [option("a", "p")])
+        prepared = manager.prefetch("p")
+        self.assertEqual([item.option_id for item in prepared], ["a"])
+        self.assertEqual(manager.resident_options(), ())
+        manager.page_in("p")
+        self.assertEqual([item.option_id for item in manager.resident_options()], ["a"])
+
+    def test_prefetch_respects_shadow_budget(self):
+        manager = VirtualOptionManager(max_resident=1)
+        manager.register_page("p", [option("a", "p"), option("b", "p")])
+        with self.assertRaises(OptionFault):
+            manager.prefetch("p")
+
     def test_revision_invalidation_and_stable_id(self):
         manager = VirtualOptionManager(max_resident=2)
         manager.register_page("p", [option("x", "p", revision=1)])

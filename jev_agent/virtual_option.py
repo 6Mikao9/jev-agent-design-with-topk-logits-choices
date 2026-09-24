@@ -105,6 +105,11 @@ class VirtualOptionManager:
     def pages(self) -> tuple[OptionPage, ...]:
         return tuple(deepcopy(page) for page in self._pages.values())
 
+    def page(self, page_id: str) -> OptionPage | None:
+        """Look up one logical page without copying the whole directory."""
+        item = self._pages.get(page_id)
+        return deepcopy(item) if item is not None else None
+
     def resident_options(self) -> tuple[VirtualOption, ...]:
         return tuple(deepcopy(option) for option in self._resident.values())
 
@@ -137,8 +142,20 @@ class VirtualOptionManager:
         return tuple(deepcopy(option) for option in selected)
 
     def prefetch(self, page_id: str, *, limit: int | None = None) -> tuple[VirtualOption, ...]:
-        """Synchronously warm a page; an async scheduler can wrap this later."""
-        return self.page_in(page_id, limit=limit)
+        """Prepare a read-only page snapshot without changing residency."""
+        page = self.page(page_id)
+        if page is None:
+            raise OptionFault(f"virtual page is not registered: {page_id}")
+        if page_id in self._stale_pages:
+            raise StaleVirtualOption(f"virtual page is stale: {page_id}")
+        if limit is not None and (isinstance(limit, bool) or limit < 1):
+            raise ValueError("limit must be positive")
+        selected = page.options if limit is None else page.options[:limit]
+        if len(selected) > self.max_resident:
+            raise OptionFault(
+                f"page {page_id} has {len(selected)} options; use limit <= {self.max_resident}"
+            )
+        return selected
 
     def evict_lru(self, count: int = 1, *, protected_ids: Iterable[str] = ()) -> tuple[str, ...]:
         if isinstance(count, bool) or count < 1:

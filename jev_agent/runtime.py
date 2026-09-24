@@ -67,14 +67,19 @@ class DecisionRuntime:
         context_manager: ContextResidencyManager | None = None,
         trace: DecisionTraceGraph | None = None,
         max_options: int = 255,
+        max_page_attempts: int = 2,
     ) -> None:
         if isinstance(max_options, bool) or max_options < 2:
             raise ValueError("max_options must be at least two")
+        if isinstance(max_page_attempts, bool) or max_page_attempts < 1:
+            raise ValueError("max_page_attempts must be positive")
         self.decision_model = decision_model
         self.option_manager = option_manager or VirtualOptionManager()
         self.context_manager = context_manager
         self.trace = trace or DecisionTraceGraph()
         self.max_options = max_options
+        self.max_page_attempts = max_page_attempts
+        self._page_attempts: dict[tuple[str, int, str, int], int] = {}
         self._step = 0
 
     @staticmethod
@@ -93,6 +98,7 @@ class DecisionRuntime:
     def _options(
         self,
         *,
+        task: TaskState,
         page_ids: Iterable[str],
         refinements: Mapping[str, Sequence[VirtualOption]],
     ) -> list[ChoiceOption]:
@@ -101,7 +107,18 @@ class DecisionRuntime:
             for item in self.option_manager.resident_options()
         ]
         resident_ids = {item.option_id for item in self.option_manager.resident_options()}
-        for page_id in page_ids:
+        for page_id in dict.fromkeys(page_ids):
+            page = self.option_manager.page(page_id)
+            page_revision = page.revision if page is not None else 0
+            if page is not None:
+                # A page that is already fully resident is no longer a useful
+                # recovery action.  Hiding it prevents deterministic or weak
+                # backends from repeatedly paging the same page forever.
+                if all(item.option_id in resident_ids for item in page.options):
+                    continue
+            attempts = self._page_attempts.get((task.task_id, task.revision, page_id, page_revision), 0)
+            if attempts >= self.max_page_attempts:
+                continue
             options.append(
                 ChoiceOption(f"PAGE:{page_id}", f"Materialize virtual option page {page_id}.")
             )
@@ -143,7 +160,8 @@ class DecisionRuntime:
                 query or task.goal, updates=context_updates, phase=phase
             )
         refinements = refinements or {}
-        options = self._options(page_ids=page_ids, refinements=refinements)
+        options = self._options(task=task, page_ids=page_ids, refinements=refinements)
+        request_revision = task.revision
         request = DecisionRequest(
             state=self._state_text(task, contexts),
             instructions=instructions,
@@ -175,6 +193,12 @@ class DecisionRuntime:
         try:
             if choice.startswith("PAGE:"):
                 page_id = choice.removeprefix("PAGE:")
+                page = self.option_manager.page(page_id)
+                key = (task.task_id, task.revision, page_id, page.revision if page is not None else 0)
+                attempts = self._page_attempts.get(key, 0)
+                if attempts >= self.max_page_attempts:
+                    raise OptionFault(f"page retry budget exhausted: {page_id}")
+                self._page_attempts[key] = attempts + 1
                 self.option_manager.page_in(page_id)
                 status = "paged"
                 self.trace.record(source="runtime", target="PAGE", label=page_id, success=True)
@@ -203,7 +227,15 @@ class DecisionRuntime:
                 return RuntimeStepResult(self._step, status, choice, decision,
                                          context_ids=context_ids, resident_option_ids=resident_ids)
 
-            selected = self.option_manager.resolve(choice, expected_revision=task.revision)
+            # ``TaskState.revision`` guards the decision snapshot; it is not
+            # the same namespace as a VirtualOption's page revision.  Compare
+            # the task snapshot separately and let the manager validate the
+            # option/page revision it owns.
+            if task.revision != request_revision:
+                raise StaleVirtualOption(
+                    f"task revision changed during decision: expected {request_revision}, got {task.revision}"
+                )
+            selected = self.option_manager.resolve(choice)
             tool_result = execute(selected) if execute is not None else None
             status = "executed" if execute is not None else "committed"
             self.trace.record(source="runtime", target=status, label=choice, success=True)
@@ -218,4 +250,3 @@ class DecisionRuntime:
             return RuntimeStepResult(self._step, "fault", choice, decision,
                                      context_ids=context_ids, resident_option_ids=resident_ids,
                                      faults=(type(error).__name__,), reason=reason)
-
