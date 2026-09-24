@@ -206,5 +206,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第3轮：统一 runtime 恢复闭环与页面边界。** `DecisionRuntime.step()` 增加按 task/revision 隔离的 PAGE 重试预算；完整驻留页不再重复暴露 PAGE；`TaskState.revision` 与 `VirtualOption.revision` 分开校验；`VirtualOptionManager.page()` 提供 O(1) 页定位，`prefetch()` 变为有界只读 shadow，不改 resident。`benchmarks/benchmark_runtime_stateful_recovery.py` 通过 24 步 scripted runtime 闭环：PAGE 1 次、提交 2 次、1 次矛盾、1 次失效、1 次恢复、后续 quota 依赖动作正确，resident 峰值 4/8，副作用 2。远端完整测试 154/154。相对预期：明显好于上一版 runtime 直接接入失败；仍不是真实 Jev 质量结果。报告为 `docs/reports/2026-09-24-runtime-stateful-recovery.zh-CN.md`。下一步接真实 Jev、无 oracle locator 和多状态恢复矩阵。
 
+- **第4轮：真实 Jev 无 oracle locator seed=23 复核。** 新随机目录顺序下运行 12 页 × 24 工具目录的 8-case 子集，覆盖 `empty/wrong_page/stale/correct_resident` 四种状态。8/8 成功，6/6 非驻留 case 首页定位正确，wrong-page 恢复 2/2，stale 阻断 2 次，resident 峰值 2/2，16 次调用的 request P50 为 623.9 ms、case P50/P95 为 1,216.9/1,990.5 ms；外部副作用 0。相对预期：好于最低预期，说明协议在新 seed 和不透明 ID 下可运行；样本仍小，不能外推端到端质量。首条一次性凭据 transport error 未计入质量，成功结果为 `benchmarks/results/jev-bounded-paging-seed23-key2.json`。报告为 `docs/reports/2026-09-24-bounded-paging-seed23-live.zh-CN.md`。下一步跑完整 12 页 × 4 状态并加入相似/否定 decoy 与执行校验。
+
 
 
