@@ -1,7 +1,48 @@
+# Decision-Native Agent Runtime
+
+这是一个面向有界、非生成式 Decision Model 的开放 research runtime。我们把开放世界的能力拆成两个可管理的逻辑空间，再让有限的决策接口按需看到其中一小部分：
+
+```text
+Open World → Virtual Option Space → Resident Options
+           → DecisionModel / Jev → State Transition
+                 ↘ Virtual Context Space ↗
+```
+
+## Quick start
+
+### Core：不下载模型即可运行
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+jev-agent --workspace .\agent_workspace
+```
+
+Core 模式使用确定性的 scripted chooser，能检查 workspace 工具、候选审批和结构化 trace，不需要 GPU、权重或 API key。
+
+### 可选 0.8B helper 与 Live Jev
+
+```powershell
+pip install -e ".[models]"
+python -m jev_agent.cli --live --workspace .\agent_workspace --key-stdin
+```
+
+模型权重放在仓库外；key 通过 stdin 或安全凭据来源提供。完整安装、测试和边界见[中文快速开始](docs/QUICKSTART.zh-CN.md)与[English README](README.en.md)。
+
+## 主要贡献候选
+
+1. **Decision-space virtualization**：把逻辑上可无限增长的工具/动作/参数空间变成有界 resident set；`PAGE/EXPAND` 横向扩大覆盖，`REFINE` 纵向提高候选粒度。
+2. **显式 runtime 语义**：选项带 stable ID、page ownership、revision 和依赖；`OptionFault`、`ContextFault`、`PAGE`、`REFINE`、`INVALIDATE`、`CLARIFY`、`STOP` 都是可记录、可回放的状态转换。
+3. **Virtual Context Space**：Pinned / Working / Cold 上下文按 utility、aging、hysteresis 和 revision 管理；运行时不假设跨请求 prefix/KV cache 命中，因此可以安全重建 resident context。
+4. **统一同步执行骨架**：`DecisionRuntime.step()` 把 DecisionModel、选项驻留、上下文刷新、统一结果校验、可选执行器和 trace 接入同一条有界路径。
+5. **Jev 实例与可替换 backend**：Jev 是当前 backend，不是系统定义；Replay、Oracle 和未来的其他 DecisionModel 可以复用同一 runtime。
+
+这些是系统组合的贡献候选，不把 paging、动态词表、记忆或 Jev agent 单点写成绝对首创；系统级主张必须由无 oracle 的长轨迹、消融和成本/延迟实验支持。
 
 ## 收敛后的研究定位（2026-09-24）
 
-本项目是面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。`PAGE/EXPAND` 增加候选覆盖，`REFINE` 降低候选粒度（完整 candidate → field → fragment → token）；Jev 始终做最终选择，helper logits 只是 refinement proposal。单点机制都有近邻；我们的候选贡献是把 decision-space virtualization、decision-preserving refinement、context residency 和 fault recovery 统一成可替换 DecisionModel runtime。新颖性范围与不可过度主张的先例见 [新颖性审计](docs/NOVELTY_AUDIT.zh-CN.md)。
+本项目是面向非生成式 Decision Model 的 Jev-native agent runtime：`Open world → Virtual Option Space → Resident Option Space → Jev decision → State transition`。`PAGE/EXPAND` 增加候选覆盖，`REFINE` 降低候选粒度（完整 candidate → field → fragment → token）；Jev 始终做最终选择，helper logits 只是 refinement proposal。单点机制都有近邻；我们的候选贡献是把 decision-space virtualization、decision-preserving refinement、context residency 和 fault recovery 统一成可替换 DecisionModel runtime。公开定位只主张这一系统组合，不把单个组件写成绝对首创。
 
 实验主线使用逻辑空间 10/100/1K/10K/100K、resident K=8/16/32，在删除正确 coarse candidate 后比较 argmax、repropose、full LLM handoff、helper top1、helper topK+Jev、`+EXPAND_K`、`+BACKTRACK/LOOKUP/CLARIFY`，报告 RecoveryRate、coverage、cost、latency、state errors、side effects。BFCL coverage 仅表示 candidate availability，不等于 Jev accuracy。适用 workload 优先短字段、SQL、路径、JSON、工具参数；长篇自然语言仅作高成本实验。
 
@@ -13,13 +54,15 @@
 
 English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memory, and Natural Interaction for Decision Models**
 
-版本：`v0.6-prototype` · 初稿日期：2026-09-23 · 状态：原型已实现，项目进行中
+版本：`v0.7-runtime-prototype` · 初稿日期：2026-09-23 · 状态：原型已实现，项目进行中
 
 作者：**匿名作者**
 
 本项目探索如何围绕 Jev 的结构化决策接口构建完整 agent 系统。系统利用现有工具定义和执行器，由辅助小模型或扩散模型先提出完整参数或片段，Jev 选择合适的提案；当提案均不适用时，Jev 可显式选择 Top-k 回退。辅助生成模型根据当前参数前缀输出 logits，取概率最高的 k 个 token 组成动态 token 表；Jev 从这张表中选择下一 token，拼接到前缀后继续下一轮。这使回退路径在控制流程上类似大模型的下一 token 采样，同时保留 Jev 对每一步选项的决策权。系统按决策影响管理多层记忆，并根据依赖关系在任务变化后局部重规划，支持自然语言任务、澄清和修正。
 
 项目已包含可运行原型和 Jev Choice 接口：外部生成模型提供下一 token logits，选择器从 Top-k 动态 token 表中选择并继续生成。**当前保存的完整对话和速度实验使用 `local_top1_proxy`（取 helper 的最高分 token），没有使用真实 Jev 逐 token 决策。**真实 Jev 仅完成了一次工具候选接口测试；真实 Jev 长回答的质量和速度仍待评测。外部模型可替换，Qwen3.5-0.8B 是当前 helper 实现之一。
+
+当前统一执行入口是 `jev_agent.runtime.DecisionRuntime.step()`：它把 DecisionModel、VirtualOptionManager、ContextResidencyManager、revision/validation、可选执行器和 trace 放进同一个有界同步步骤，支持 `PAGE`、`REFINE`、`CONTEXT_FAULT`、`CLARIFY`、`STOP` 与 resident option commit。它是新的最小 runtime loop，尚未替代旧 `JevAgentOrchestrator`，也不宣称已有异步 governor 或生产级调度。
 
 研究范围是 Jev 与外部 logits Top-k 动态候选协作的自然语言生成方案。已有有界检索记录保留在设计文档中；本次代码发布记录具体实现和实验边界，不据此声称已验证“首个真实 Jev 流畅对话系统”。
 
@@ -31,6 +74,9 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 ## 阅读入口
 
+- [中文快速开始](docs/QUICKSTART.zh-CN.md)：无模型 core agent、可选 0.8B helper、live Jev 和测试入口。
+- [English README](README.en.md)：英文安装、helper 和 live Jev 入口。
+- [Versioning and archive policy](docs/VERSIONING.md)：版本、历史报告和过时文档归档规则。
 - [完整技术设计（中文）](docs/DESIGN.zh-CN.md)：包含投机候选与 Top-k 回退、按决策影响管理多层记忆（I1）、依据依赖局部重规划（I3），以及其余原始设想。
 - [开放工具参数输入协议](docs/ARGUMENT_INPUT_PROTOCOL.zh-CN.md)：小模型提案、Jev 主动 `REFINE`/`REPROPOSE`、多字段并行和最终校验边界。
 - [实时交互 Agent](docs/REALTIME_CLI.zh-CN.md)：`python -m jev_agent.cli` 启动的 workspace 内 REPL，支持 scripted 或真实 Jev chooser。
@@ -79,7 +125,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 当前仓库已经包含第一版 Python 原型：
 
-- `jev_agent/`：工具候选、schema 校验、依赖感知记忆、页表记忆第一版、Jev Choice 适配器和 Top-k token 回退。
+- `jev_agent/`：工具候选、schema 校验、依赖感知记忆、页表记忆、`DecisionRuntime.step()`、Jev Choice 适配器和 Top-k token 回退。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、Qwen3.5/Qwen3.8 同上下文比较、`END_DIALOGUE` 对话 trace 和速度拆分。
 - `tests/`：控制流、工具目录、KV cache 和并发候选的边界测试。
 - `pyproject.toml`：核心包及可选 Transformers/Torch 依赖。

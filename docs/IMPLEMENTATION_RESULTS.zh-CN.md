@@ -1,6 +1,6 @@
 # 原型实现与首轮实测
 
-本文补充 v0.6 设计文档，记录当前公开原型的实现边界和可复现实验。原始大文件结果保存在本地 `benchmarks/results/`，默认不会进入 Git；公开仓库保留脚本、测试和本摘要。
+本文补充当前 `v0.7-runtime-prototype` 设计文档，记录公开原型的实现边界和可复现实验。原始大文件结果保存在本地 `benchmarks/results/`，默认不会进入 Git；公开仓库保留脚本、测试和本摘要。
 
 ## 已实现模块
 
@@ -12,7 +12,14 @@
 - `jev_agent/virtual_option.py`：同步 Virtual Option Space 原型，提供稳定虚拟 ID、有限 resident set、page-in/page-out、LRU、revision/stale、`OptionFault`/`RefineFault` 和基础 refine；异步 prefetch、跨空间 resolver 和大规模 fault loop 仍待实现。
 - `jev_agent/context_residency.py`：Context-space 的 pinned/working/cold 基线，支持按类型 aging、utility reward、hysteresis、minimum residency 和 `ContextFault`；当前是确定性 lexical policy，尚未接入向量 RAG 或统一 fault scheduler。
 - `jev_agent/decision_model.py`：可替换 `DecisionModel` 边界，以及 Jev/Choice 适配、Replay 和 Oracle backend；Oracle 只用于机制上界，不代表模型质量。
+- `jev_agent/runtime.py`：统一的有界同步 `DecisionRuntime.step()`，把 resident option、context refresh、PAGE/REFINE、DecisionModel 校验、可选执行器和 trace 接到同一条步骤路径；它仍不是异步 governor 或生产调度器。
 - `benchmarks/`：合成控制流、BFCL 候选覆盖、同上下文 top-k 重合、对话 trace 和速度拆分脚本。
+
+## 工程化回归（v0.7 runtime prototype）
+
+2026-09-24 修复了页表 recency tie-break 使用绝对 Unix 时间导致所有页面几乎同分的问题，改为基于页面年龄的指数衰减；bounded raw scan 遇到超预算大页时跳过该页继续扫描，避免插入顺序遮蔽后续证据；有历史 utility 或 phase match 的 context block 即使与当前 query 没有词法重合也保留候选资格。Jev/Replay/Oracle/Memory 路径共用 choice ID、概率键、有限值、置信度和归一化校验。远端 venv 全套 **147 项测试通过**。
+
+相对预期：这些是确定性正确性修复，结果比预期更好地暴露并关闭了三个工程边界；它们不等于语义检索质量提升，也不替代真实 Jev 长轨迹评测。
 
 ## 评估证据边界与收敛计划
 
