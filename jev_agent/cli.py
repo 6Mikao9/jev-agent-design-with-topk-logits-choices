@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import sys
+from uuid import uuid4
 from typing import Any
 
 from .agent import Agent, ToolDefinition
@@ -71,16 +72,34 @@ def _make_proposer(arguments: dict[str, Any]):
 
 class InteractiveAgent:
     def __init__(self, *, workspace: Path, catalog: ToolCatalog, chooser: ChoiceBackend) -> None:
-        self.workspace = workspace
+        self.workspace = workspace.resolve()
         self.catalog = catalog
         self.chooser = chooser
         self.state = TaskState("interactive", "No task has been assigned yet")
         self.pending: Candidate | None = None
         self.pending_tool: ToolDefinition | None = None
         self.trace: list[dict[str, Any]] = []
-        self.trace_path = workspace / ".jev_trace.json"
+        self.backend = getattr(chooser, "model", "scripted-cli")
+        trace_dir = self.workspace / ".jev_traces"
+        if trace_dir.exists() and trace_dir.is_symlink():
+            raise ValueError("trace directory must not be a symlink")
+        trace_dir.mkdir(parents=True, exist_ok=True)
+        self.trace_path = trace_dir / f"session-{uuid4().hex}.json"
+
+    def clear_pending(self) -> None:
+        self.pending, self.pending_tool = None, None
+
+    def _record_revision(self, dependency_id: str, observation: str) -> None:
+        self.clear_pending()
+        self.state.revise(dependency_id, observation)
 
     def _save(self) -> None:
+        if self.trace_path.is_symlink() or self.trace_path.parent.is_symlink():
+            raise ValueError("trace path must not be a symlink")
+        root = self.workspace.resolve()
+        target = self.trace_path.resolve(strict=False)
+        if target != root and root not in target.parents:
+            raise ValueError("trace path resolves outside workspace")
         self.trace_path.write_text(json.dumps({"task_revision": self.state.revision,
             "events": self.trace}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -89,6 +108,8 @@ class InteractiveAgent:
                          for s in self.catalog.specs() if s.available)
 
     def plan(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        # A failed/unknown plan must never leave an older candidate approvable.
+        self.clear_pending()
         spec = self.catalog.get(tool_name)
         if not spec.available:
             raise PermissionError(f"tool is unavailable: {tool_name}")
@@ -97,7 +118,7 @@ class InteractiveAgent:
         prepared = ArgumentInput(
             chooser_factory=lambda _field: self.chooser,
             proposer=_make_proposer(arguments),
-            parallel_fields=2,
+            parallel_fields=1,
             max_choice_calls=32,
             time_budget_seconds=60,
         ).build(state=self.state, tool=tool, fields=fields)
@@ -113,31 +134,52 @@ class InteractiveAgent:
     def approve(self) -> dict[str, Any]:
         if self.pending is None or self.pending_tool is None:
             raise RuntimeError("no prepared candidate; use :plan first")
-        result = Agent(self.chooser).run(state=self.state, tool=self.pending_tool, drafts=[self.pending])
+        pending_tool = self.pending_tool
+        try:
+            result = Agent(self.chooser).run(state=self.state, tool=pending_tool, drafts=[self.pending])
+        except Exception as exc:
+            event = {"event": "approve", "tool": pending_tool.name,
+                     "status": "provider_error", "choice_calls": 0,
+                     "recovery": type(exc).__name__, "result": None}
+            self.trace.append(event)
+            self._save()
+            return event
+        finally:
+            # Every attempt consumes the candidate, including failures and review/stop signals.
+            self.clear_pending()
         tool_status = result.tool_result.get("status") if isinstance(result.tool_result, dict) else None
         status = ("review_required" if tool_status == "review_required" else
                   "stopped" if tool_status == "stopped" else result.status)
-        event = {"event": "approve", "tool": self.pending_tool.name, "status": status,
+        event = {"event": "approve", "tool": pending_tool.name, "status": status,
                  "choice_calls": result.choice_calls, "recovery": result.recovery,
                  "result": summarize_result(result.tool_result) if result.tool_result is not None else None}
         self.trace.append(event)
         if result.status == "executed" and status == "executed":
-            self.state.revise(f"tool:{self.pending_tool.name}", json.dumps(summarize_result(result.tool_result), sort_keys=True))
-            self.pending = None
-            self.pending_tool = None
+            self.state.revise(f"tool:{pending_tool.name}", json.dumps(summarize_result(result.tool_result), sort_keys=True))
         self._save()
-        return event
+        return {**event, "display_result": bounded_result(result.tool_result) if result.tool_result is not None else None}
 
     def stop(self) -> dict[str, Any]:
-        self.pending, self.pending_tool = None, None
+        self.clear_pending()
         event = {"event": "stop", "status": "stopped"}
         self.trace.append(event)
         self._save()
         return event
 
 
+def bounded_result(value: Any, max_bytes: int = 8192) -> str:
+    """Render a complete result when small, otherwise a bounded readable prefix."""
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    encoded = text.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return text
+    suffix = "…[truncated]"
+    room = max(0, max_bytes - len(suffix.encode("utf-8")))
+    return encoded[:room].decode("utf-8", errors="ignore") + suffix
+
+
 def repl(agent: InteractiveAgent, *, input_stream=sys.stdin, output_stream=sys.stdout) -> None:
-    print("Jev agent prototype. :help for commands; side effects require :approve.", file=output_stream)
+    print(f"Jev agent prototype (backend={agent.backend}). Tools are workspace-local; {len([s for s in agent.catalog.specs() if s.available])} available. :help for commands.", file=output_stream)
     for raw in input_stream:
         line = raw.strip()
         if not line:
@@ -154,12 +196,13 @@ def repl(agent: InteractiveAgent, *, input_stream=sys.stdin, output_stream=sys.s
                 goal = line[6:].strip()
                 if not goal:
                     raise ValueError("goal must not be empty")
-                agent.state.revise("user_goal", goal)
+                agent._record_revision("user_goal", goal)
                 agent.state.goal = goal
                 agent.trace.append({"event": "goal", "status": "recorded", "revision": agent.state.revision})
                 agent._save()
                 print(json.dumps({"event": "goal", "status": "recorded", "revision": agent.state.revision}, ensure_ascii=False), file=output_stream)
             elif line.startswith(":plan"):
+                agent.clear_pending()
                 tool, arguments = parse_plan_line(line)
                 print(json.dumps(agent.plan(tool, arguments), ensure_ascii=False), file=output_stream)
             elif line == ":approve":
@@ -169,7 +212,9 @@ def repl(agent: InteractiveAgent, *, input_stream=sys.stdin, output_stream=sys.s
             elif line == ":trace":
                 print(json.dumps({"trace": str(agent.trace_path), "events": agent.trace}, ensure_ascii=False), file=output_stream)
             else:
-                agent.state.observations.append(line)
+                if line.startswith(":"):
+                    raise ValueError(f"unknown command: {line.split()[0]}")
+                agent._record_revision("user_observation", line)
                 agent.trace.append({"event": "observation", "status": "recorded"})
                 agent._save()
                 print(json.dumps({"event": "observation", "status": "recorded",
