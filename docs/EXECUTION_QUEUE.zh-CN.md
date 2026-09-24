@@ -208,5 +208,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第4轮：真实 Jev 无 oracle locator seed=23 复核。** 新随机目录顺序下运行 12 页 × 24 工具目录的 8-case 子集，覆盖 `empty/wrong_page/stale/correct_resident` 四种状态。8/8 成功，6/6 非驻留 case 首页定位正确，wrong-page 恢复 2/2，stale 阻断 2 次，resident 峰值 2/2，16 次调用的 request P50 为 623.9 ms、case P50/P95 为 1,216.9/1,990.5 ms；外部副作用 0。相对预期：好于最低预期，说明协议在新 seed 和不透明 ID 下可运行；样本仍小，不能外推端到端质量。首条一次性凭据 transport error 未计入质量，成功结果为 `benchmarks/results/jev-bounded-paging-seed23-key2.json`。报告为 `docs/reports/2026-09-24-bounded-paging-seed23-live.zh-CN.md`。下一步跑完整 12 页 × 4 状态并加入相似/否定 decoy 与执行校验。
 
+- **第5轮：完整 48-case 真实 Jev 矩阵与执行前校验。** seed=31 的 12 页 × `empty/wrong_page/stale/correct_resident` 全矩阵，无 verifier 为 42/48（87.5%），wrong-page 8/12；加入 `ACCEPT/PAGE` scope verifier 后为 45/48（93.75%），wrong-page 10/12、empty/stale 各 12/12，首页定位 32/36、missing detection 11/12。校验把调用从 111 增至 202，case P95 从 2.55s 增至 7.04s，resident 仍 2/2。相对预期：质量更好、成本更差；剩余失败是误 CLARIFY、NEXT 窗口循环和 false reject 后耗尽预算。报告为 `docs/reports/2026-09-24-bounded-paging-seed31-live.zh-CN.md`，JSON 结果只留在远端 `benchmarks/results/`，未进 Git。下一步做目录 visited/budget、false-reject 分类、并行 verifier 与 helper 预筛。
+
 
 
