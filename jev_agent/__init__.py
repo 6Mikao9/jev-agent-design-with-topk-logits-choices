@@ -3,7 +3,7 @@
 from .agent import Agent, AgentResult, ToolDefinition
 from .arguments import ArgumentField, ArgumentInput, ArgumentInputResult, FieldContext, ValueProposal
 from .context_residency import ContextBlock, ContextCandidate, ContextFault, ContextResidencyManager
-from .context_refresh import ContextRefreshCoordinator, ContextRefreshResult, ContextVerification
+from .context_refresh import ContextRefreshCoordinator, ContextRefreshResult, ContextVerification, JevContextVerifier
 from .decision_model import ChoiceBackendAdapter, DecisionModel, DecisionRequest, OracleDecisionModel, ReplayDecisionModel
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
@@ -49,6 +49,7 @@ __all__ = [
     "ContextRefreshCoordinator",
     "ContextRefreshResult",
     "ContextVerification",
+    "JevContextVerifier",
     "ChoiceBackendAdapter",
     "DecisionModel",
     "DecisionRequest",

@@ -2,6 +2,8 @@ import unittest
 
 from jev_agent.context_refresh import ContextRefreshCoordinator, ContextVerification
 from jev_agent.context_residency import ContextBlock, ContextFault, ContextResidencyManager
+from jev_agent.context_refresh import JevContextVerifier
+from jev_agent.models import ChoiceResult
 
 
 class ContextRefreshCoordinatorTests(unittest.TestCase):
@@ -71,6 +73,26 @@ class ContextRefreshCoordinatorTests(unittest.TestCase):
                                      top_m=1, load_k=1)
         self.assertEqual(result.status, "no_supported_block")
         self.assertEqual(result.verifications[0].confidence, 0.0)
+
+    def test_jev_adapter_exposes_no_evidence_and_uses_choice_score(self):
+        class FakeChooser:
+            def choose(self, *, state, instructions, options):
+                self.state, self.instructions, self.options = state, instructions, options
+                probabilities = {option.option_id: 0.1 for option in options}
+                probabilities["NO_EVIDENCE"] = 0.8
+                return ChoiceResult("NO_EVIDENCE", probabilities, 0.8, "fake")
+
+        chooser = FakeChooser()
+        result = JevContextVerifier(chooser)(
+            ContextBlock("b", "possibly relevant summary", "raw://b", revision=3),
+            "find the current constraint", 9,
+        )
+        self.assertFalse(result.supported)
+        self.assertEqual(result.reason, "NO_EVIDENCE")
+        self.assertEqual(result.confidence, 0.8)
+        self.assertIn("epoch", chooser.state.lower())
+        self.assertEqual({option.option_id for option in chooser.options},
+                         {"YES", "NO", "NO_EVIDENCE"})
 
 
 if __name__ == "__main__":

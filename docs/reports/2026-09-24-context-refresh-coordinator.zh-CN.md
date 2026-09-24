@@ -14,6 +14,8 @@
 
 旧 epoch、旧 revision、异常 verifier 和超过预算的结果不会进入 resident set。verifier 可以由 Jev 适配器、回放选择器或 deterministic test double 实现；本轮没有调用网络 Jev。
 
+本轮又加入 `JevContextVerifier` 适配器。它把每个 block 检查编码成三个显式选项：`YES`、`NO`、`NO_EVIDENCE`，并把 query、block ID、revision 和摘要作为不可信数据提交给现有 `ChoiceBackend`。它只提供接入边界，不把 Jev 的 choice probability 宣称为校准概率；真实调用暂未运行。
+
 ## 代理结果
 
 配置：6 个阶段事件，`M=2`，`K=1`，每个 verifier 人为等待 2 ms，使用确定性目标判断。
