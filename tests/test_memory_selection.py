@@ -28,7 +28,10 @@ class MemorySelectionTests(unittest.TestCase):
         return index
 
     def test_rank_then_top_n_reads_only_selected_prefix(self):
-        chooser = ScriptedChooser(["PAGE_001", "TOP_2"])
+        # The recency tie-break keeps the page inserted last first; choose the
+        # first returned entry so the ranking assertion exercises the full
+        # probability path rather than relying on the old lexical-ID order.
+        chooser = ScriptedChooser(["PAGE_000", "TOP_2"])
         result = TwoStageMemorySelector(chooser).retrieve(self._index(), context="deployment")
         self.assertEqual(result.status, "read_complete")
         self.assertEqual(result.ranked_ids[:2], ("b", "a"))
