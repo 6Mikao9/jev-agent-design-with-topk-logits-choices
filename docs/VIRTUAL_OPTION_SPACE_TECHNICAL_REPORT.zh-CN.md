@@ -81,9 +81,10 @@ Jev Choice
 [`OptionPageBudget`](OPTION_PAGE_BUDGET.zh-CN.md)。
 
 TypeSafe 当前文档给出的 Jev 1.13 上下文预算是每请求 64k tokens，`state` 加最长
-问题 32k tokens；我们的 24 KiB 分区 Context Frame 和本地推理服务 2048-token
-设置是刻意保守的工程预算，不是 Jev 上限。页大小仍需和描述字节数、延迟和真实
-决策质量一起评测。
+问题 32k tokens；我们的 24 KiB 分区 Context Frame 是窄基线，
+`ContextBudget.jev_wide()` 提供 48 KiB UTF-8 字节宽配置。本地推理服务 2048-token
+设置只是测试配置，不是 Jev 上限。页大小仍需和描述字节数、延迟和真实决策质量
+一起评测。
 
 ## 5. Prefetch 与概率阈值
 

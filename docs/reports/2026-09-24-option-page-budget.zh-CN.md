@@ -15,17 +15,18 @@
 - 导出 `OptionPageBudget`、`OptionCall` 及常量。
 - 新增 `tests/test_option_budget.py` 的 3 个边界测试。
 - 文档：`docs/OPTION_PAGE_BUDGET.zh-CN.md`、Virtual Option 技术报告、Option Space 状态机说明和 README 链接。
+- 新增 `ContextBudget.jev_wide()`：48 KiB UTF-8 字节宽配置；24 KiB 默认配置继续作为窄基线。
 
 ## 结果
 
-本地 bundled Python 测试：**140 passed，3 skipped**（可选 torch/symlink 条件），
+本地 bundled Python 测试：**141 passed，3 skipped**（可选 torch/symlink 条件），
 其中新增预算测试全部通过。255 个目录候选被切成 `[255,255]`；40 个候选在 4 个
 控制项下切成 `[16,16,8]`，每个调用均不超过 255。
 
 官方 TypeSafe 文档写明 Choice 最多 255 个选项；Jev 1.13 当前上下文预算为每请求
-64k tokens，`state` 加最长单个问题 32k tokens。仓库的 24 KiB Context Frame 是
-按 UTF-8 字节计的保守分区预算，本地 Qwen 服务的 2048-token 参数也是测试配置，
-不是 Jev 的官方上下文上限。
+64k tokens，`state` 加最长单个问题 32k tokens。仓库保留 24 KiB 的窄基线，并新增
+`ContextBudget.jev_wide()` 的 48 KiB UTF-8 字节宽配置；本地 Qwen 服务的
+2048-token 参数仍只是测试配置，不是 Jev 的官方上下文上限。
 
 ## 设计判断
 
@@ -42,4 +43,3 @@ AIOS 只作为 runtime 资源分层的相关工作启发；它没有证明 255 �
 **比预期清楚，尚未证明质量更好。** 255 上限和 Jev 上下文上限现在有了可核验的
 定义，代码也有边界测试；但真实 Jev 在 8/16/32/64 候选下的准确率、延迟和控制项
 误选率尚未测，本轮不宣称默认 16 最优。
-

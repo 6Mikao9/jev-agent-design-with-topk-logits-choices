@@ -19,9 +19,10 @@ Jev Choice 的 **255 是 API 的硬上限**，适合用作逻辑目录页（cata
 的 255 个名额，不能把它们当作“免费按钮”。
 
 官方 API 文档目前写明 Choice 最多 255 个选项；Jev 1.13 的上下文预算是每个请求
-最多 64k tokens，`state` 加最长单个问题最多 32k tokens。我们的 24 KiB 分区
-Context Frame 和本地 Qwen 服务的 2048-token 限制是保守的工程预算，不是把 Jev
-的官方上限改成 2k，也不打算把请求推到 32k。
+最多 64k tokens，`state` 加最长单个问题最多 32k tokens。我们的默认 24 KiB
+分区 Context Frame 是保守的工程预算；`ContextBudget.jev_wide()` 新增 48 KiB
+字节的宽配置用于实验。本地 Qwen 服务的 2048-token 限制仍只是本地推理配置，不是
+把 Jev 的官方上限改成 2k，也不打算把请求推到 32k。
 
 ## Option Space 在哪里
 
@@ -99,4 +100,3 @@ AIOS 并没有给出 255-entry Jev page 的结论；本项目的 255 对齐、�
 参考：[TypeSafe API reference](https://docs.typesafe.ai/api)、
 [TypeSafe models](https://docs.typesafe.ai/models)、
 [AIOS README](https://github.com/agiresearch/AIOS)。
-

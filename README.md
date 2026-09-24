@@ -174,7 +174,10 @@ score(block) = lexical_overlap(query, summary)
 
 `GroundedArgumentAgent` 还有 24 KiB 的最终 state 上限；目前 context block 主要注入摘要，materializer 正文由 evidence fallback 单独读取，因此不能把这个数字误解为“所有 Context Space 已经有 24 KiB 的统一分区预算”。
 
-如果现在要冻结一版可实验的 Context Frame，我建议先用以下 **规划预算**，它们还不是当前代码的默认值：
+如果现在要冻结一版可实验的 Context Frame，保留 24 KiB 作为窄基线，并使用
+`ContextBudget.jev_wide()` 做 48 KiB 的宽配置对照。两者都是 UTF-8 字节预算，不是
+token 上限；宽配置仍刻意远低于 Jev 的 32k-token `state + longest question` 约束。
+下面是窄基线的规划预算：
 
 | 分区 | 建议预算 | 溢出动作 |
 | --- | ---: | --- |

@@ -26,6 +26,11 @@ class ContextBudgetTests(unittest.TestCase):
             controller.pack((ContextSlice("pinned", "a", "12345", required=True),
                              ContextSlice("pinned", "b", "67890", required=True)))
 
+    def test_jev_wide_profile_is_expanded_but_bounded(self):
+        budget = ContextBudget.jev_wide()
+        self.assertEqual(budget.total, 48 * 1024)
+        self.assertGreater(budget.for_region("evidence"), ContextBudget().for_region("evidence"))
+
     def test_priority_order_is_stable_and_sections_render(self):
         controller = ContextBudgetController(ContextBudget(recent=5))
         packed = controller.pack((

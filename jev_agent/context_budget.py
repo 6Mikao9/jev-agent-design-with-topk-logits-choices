@@ -34,6 +34,25 @@ class ContextBudget:
     options: int = 3 * 1024
     trace: int = 2 * 1024
 
+    @classmethod
+    def jev_wide(cls) -> "ContextBudget":
+        """A wider experimental frame that remains below Jev's state budget.
+
+        Values are UTF-8 bytes, not tokens. The profile totals 48 KiB so the
+        serialized state remains well below the documented 32k-token
+        ``state + longest question`` envelope for typical English and CJK
+        mixtures. The 24 KiB default remains the conservative baseline.
+        """
+
+        return cls(
+            pinned=6 * 1024,
+            recent=8 * 1024,
+            working=12 * 1024,
+            evidence=12 * 1024,
+            options=6 * 1024,
+            trace=4 * 1024,
+        )
+
     def __post_init__(self) -> None:
         values = {name: getattr(self, name) for name in REGIONS}
         if any(isinstance(value, bool) or value < 0 for value in values.values()):
