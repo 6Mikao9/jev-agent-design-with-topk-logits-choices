@@ -97,7 +97,22 @@ class RawEvidenceFallback:
             return EvidenceRecoveryResult("stale_selection", initial.pages,
                                           tuple(candidate.page_id for candidate in candidates),
                                           reason=str(error))
+        recovered_markers = {
+            marker.casefold()
+            for page in pages
+            for marker in missing
+            if marker.casefold() in page.content.casefold()
+        }
         merged = tuple(initial.pages) + tuple(pages)
+        if len(recovered_markers) != len(missing):
+            return EvidenceRecoveryResult(
+                "contract_unsatisfied",
+                merged,
+                tuple(candidate.page_id for candidate in candidates),
+                tuple(page.page_id for page in pages),
+                initial.read_bytes + sum(len(page.content.encode("utf-8")) for page in pages),
+                reason=f"missing evidence markers after read: {sorted(set(missing) - recovered_markers)}",
+            )
         return EvidenceRecoveryResult(
             "recovered",
             merged,
