@@ -210,5 +210,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第5轮：完整 48-case 真实 Jev 矩阵与执行前校验。** seed=31 的 12 页 × `empty/wrong_page/stale/correct_resident` 全矩阵，无 verifier 为 42/48（87.5%），wrong-page 8/12；加入 `ACCEPT/PAGE` scope verifier 后为 45/48（93.75%），wrong-page 10/12、empty/stale 各 12/12，首页定位 32/36、missing detection 11/12。校验把调用从 111 增至 202，case P95 从 2.55s 增至 7.04s，resident 仍 2/2。相对预期：质量更好、成本更差；剩余失败是误 CLARIFY、NEXT 窗口循环和 false reject 后耗尽预算。报告为 `docs/reports/2026-09-24-bounded-paging-seed31-live.zh-CN.md`，JSON 结果只留在远端 `benchmarks/results/`，未进 Git。下一步做目录 visited/budget、false-reject 分类、并行 verifier 与 helper 预筛。
 
+- **第6轮：目录窗口 visited set 与终止预算。** `benchmark_jev_bounded_paging.py` 不再让 `NEXT` 循环已访问窗口，新增 `directory_exhausted` trace/summary 与访问窗口计数；远端完整测试仍为 154/154。seed=31 的 `wrong_page` 12-case verifier 子集为 9/12，首页定位 10/12，missing detection 11/12，2 个 case 明确以 `directory_exhausted` 结束，调用 58 次、case P50/P95 为 3.30/4.53 秒。相对预期：终止性更好，正确率暂未证明提升，且与上一轮不是严格 paired 比较。报告为 `docs/reports/2026-09-24-directory-visited-budget.zh-CN.md`；下一步加入 query-aware ranking、remaining-window 状态和 false-reject/locator-miss 分项。
+
 
 

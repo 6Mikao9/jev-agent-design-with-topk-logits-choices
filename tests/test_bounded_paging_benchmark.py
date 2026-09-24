@@ -61,8 +61,10 @@ class BoundedPagingTests(unittest.TestCase):
         self.assertEqual(trace['terminal'], 'clarify')
         self.assertEqual(len(trace['calls']), 1)
         trace = run_episode(ScriptedChooser(['NEXT'] * 3), RuntimeRequest('browse'), self.pages, max_calls=3)
-        self.assertEqual(trace['terminal'], 'budget_exhausted')
+        self.assertEqual(trace['terminal'], 'directory_exhausted')
         self.assertIsNone(trace['selected_tool'])
+        self.assertEqual(trace['directory_windows_visited'], trace['directory_window_count'])
+        self.assertTrue(any(e['event'] == 'directory_exhausted' for e in trace['events']))
 
     def test_fixed_resident_has_no_page_escape(self):
         chooser = ScriptedChooser(['STOP'])

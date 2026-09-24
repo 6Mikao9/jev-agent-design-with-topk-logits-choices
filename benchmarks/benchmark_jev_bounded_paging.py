@@ -144,6 +144,7 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
     window_size = choice_cap - 3
     windows = [ids[i:i + window_size] for i in range(0, len(ids), window_size)]
     cursor = 0
+    visited_windows = {cursor}
     events = []
     calls = []
     selected_tool = None
@@ -216,8 +217,14 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
             break
         if stage == "directory":
             if choice == "NEXT":
-                events.append({"event": "next_window", "from": cursor})
-                cursor = (cursor + 1) % len(windows)
+                next_cursor = (cursor + 1) % len(windows)
+                if next_cursor in visited_windows:
+                    events.append({"event": "directory_exhausted", "visited_windows": sorted(visited_windows)})
+                    terminal = "directory_exhausted"
+                    break
+                events.append({"event": "next_window", "from": cursor, "to": next_cursor})
+                cursor = next_cursor
+                visited_windows.add(cursor)
             else:
                 active = choice.split(":", 1)[1]
                 # Materialize whatever Jev selected, including an incorrect page.
@@ -246,6 +253,8 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
         resident_peak = max(resident_peak, len(manager.resident_options()))
     return {"terminal": terminal, "selected_tool": selected_tool, "calls": calls,
             "events": events, "resident_peak": resident_peak, "resident_bound": 2,
+            "directory_windows_visited": len(visited_windows),
+            "directory_window_count": len(windows),
             "submitted_choice_peak": max((c["option_count"] for c in calls), default=0),
             "choice_cap": choice_cap, "wall_ms": (perf_counter()-started)*1000,
             "external_side_effects": 0}
@@ -282,6 +291,7 @@ def summarize(rows: list[dict]) -> dict:
             "candidate_rejections": sum(e["event"] == "candidate_rejected" for r in rows for e in r["events"]),
             "wrong_page_loads": sum(r["wrong_pages_loaded"] for r in rows),
             "next_window_actions": sum(e["event"] == "next_window" for r in rows for e in r["events"]),
+            "directory_exhausted": sum(r["terminal"] == "directory_exhausted" for r in rows),
             "stale_blocks": sum(e["event"] == "stale_block" for r in rows for e in r["events"]),
             "api_calls": len(all_calls), "transport_errors": sum("error_type" in c for c in all_calls),
             "resident_peak": max((r["resident_peak"] for r in rows), default=0),
