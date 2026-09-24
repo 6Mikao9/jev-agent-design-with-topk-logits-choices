@@ -193,5 +193,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第15轮：真实 Jev `NO_EVIDENCE` → raw evidence fallback。** 新增 `ContextEvidenceFallback`，只对目录候选有界 materialize 正文，检查完整 marker、唯一性和 revision 后再提交。5 个真实 case 中，初始 gold 命中 1/4；Jev coordinator 直接命中 3/4；加入 fallback 后最终 gold 命中 4/4，3 个缺失 case 恢复 3/3；无 gold 歧义安全拒绝。20 次调用 P50/P95 为 690.6/767.7 ms。报告为 `docs/reports/2026-09-24-context-refresh-live-fallback.zh-CN.md`。这是 evidence-contract 价值，不是通用 Jev 准确率；目录漏召回和语义 evidence 仍待。
 
+- **第16轮：Working/Cold 规则与预算审计。** README 补充了当前 score、aging、minimum residency、hysteresis、revision/stale 的准确行为；明确 Working 被替换后只是进入 Cold，不会删除，Pinned 不参与 working 上限，新 block 先入 index。同步列出当前分散硬上限（working 8、memory 16/8/32 KiB、grounded evidence 4/16 KiB、materializer 16 KiB、refresh M≤4）和一套待验证的 24 KiB Context Frame 规划预算。当前仍没有统一 budget controller，规划值不能当实现结果。
+
 
 

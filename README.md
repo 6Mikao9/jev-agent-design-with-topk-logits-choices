@@ -146,6 +146,47 @@ Open World / 新事件
 
 当前代码已经实现 `Pinned/Working/Cold`、稳定 ID、revision/stale guard、页表有界读取、受限 `ContextMaterializer`、`ContextEvidenceFallback` 和 option shadow buffer；多级目录、自动 trace 摘要和统一跨空间调度仍是后续工作。`ContextRefreshCoordinator` 是可关闭的实验策略，不改变这张边界图：它只负责从目录候选中验证并提交少量 working blocks。
 
+### Working → Cold 的当前规则与预算
+
+当前实现没有“过了固定时间就自动变旧”的 TTL。一次 `refresh/rebuild(query)` 会按下面的分数重新计算候选：
+
+```text
+score(block) = lexical_overlap(query, summary)
+             + utility_score × exp(-aging_rate × steps_since_last_useful)
+             + phase_bonus
+```
+
+现有 working block 会继续作为候选；`minimum_residency_steps` 可以暂时保护它，`hysteresis` 要求新候选明显胜过当前最差 block 才替换。被替换的 block 不会删除，只是从 `_working` 移出并出现在 `cold()`；它仍可通过稳定 ID、目录检索或 raw evidence fallback 找回。Pinned block 不参与 working 上限，revision 变化的旧 block 则被移出并标记 stale。新 block 先进入 index，只有一次 refresh/rebuild 选中后才进入 Working；当前调用方没有把所有新事件自动放入 Working。
+
+当前是分散的局部上限，不是统一的 Context Space budget controller：
+
+| 区域/组件 | 当前默认硬上限 | 超出时的行为 |
+| --- | ---: | --- |
+| Working Context | 8 个非 pinned block（`max_working`） | 按 score、aging、hysteresis 替换，落入 Cold |
+| Context 正文 materialization | 每 block 16 KiB | 拒绝读取 |
+| Memory page 粗选 | 16 个候选页 | 其余不送 Jev |
+| Memory page 读取 | 8 页、单页 8 KiB、总计 32 KiB | 有界读取失败 |
+| Grounded evidence | 4 页、单页 8 KiB、总计 16 KiB | 阻止工具提交 |
+| Jev memory 请求 | 24 KiB request body；读取数量 2/4/8 | 报告 `context_budget_exceeded` |
+| Refresh verifier | 最多 4 个 block 并发，默认每 phase 2 次、cooldown 1 步 | suppress 或停止刷新 |
+| Shadow Option page | 2 页、最多 32 个 option | 过期或超限时丢弃 |
+
+`GroundedArgumentAgent` 还有 24 KiB 的最终 state 上限；目前 context block 主要注入摘要，materializer 正文由 evidence fallback 单独读取，因此不能把这个数字误解为“所有 Context Space 已经有 24 KiB 的统一分区预算”。
+
+如果现在要冻结一版可实验的 Context Frame，我建议先用以下 **规划预算**，它们还不是当前代码的默认值：
+
+| 分区 | 建议预算 | 溢出动作 |
+| --- | ---: | --- |
+| Pinned constraints | 3 KiB | 报告冲突或要求压缩，绝不静默淘汰 |
+| Recent events | 4 KiB | 只保留最近事件，旧事件转 Cold |
+| Working blocks | 6 KiB | 按 utility/phase 替换 |
+| Selected raw evidence | 6 KiB | 减少页数或进入 `CLARIFY/REVIEW` |
+| Resident tool/options | 3 KiB | `PAGE/EXPAND`，不把所有工具塞入请求 |
+| Error/trace hints | 2 KiB | 外置存储，按需召回 |
+| **合计（不含 system prompt）** | **24 KiB** | 各区独立记账，禁止互相静默侵占 |
+
+这套规划的目的，是让每次实验都能回答“哪一块占满了、谁被换出、换出后能否找回”。最终数值要用 page hit、needle recall、任务正确率、P50/P95 和上下文 churn 共同调节，不能只按 token 节省判断。
+
 ### 参数先验
 
 `jev_agent.parameter_prior.ParameterPrior` 可根据历史成功调用生成参数候选，并保留来源、置信度和 revision。它不会替代 Jev 决策，且带有过期校验。
