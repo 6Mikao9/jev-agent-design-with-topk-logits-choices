@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | 决策空间虚拟化 | ToolChain*、AutoTool/分层工具选择、RS-Claw、Pichay demand paging | “据我们检索，尚未发现把 bounded non-generative decision model 的逻辑 option space 作为可分页资源，并统一 resident set、PAGE/REFINE/INVALIDATE 语义的 runtime。” | 首个分页、首个分层工具选择、首个动态 action space |
 | Jev 无跨请求缓存假设的上下文管理 | MemGPT/Letta、CMV、RAPTOR/GraphRAG、Pichay、llm-mmu、jev-memory | “提出不依赖跨请求 prefix/KV 命中、面向 DecisionModel 的 context residency 与 fault recovery 组合。” | 首个动态上下文管理器；Jev 一定没有内部 KV cache |
-| 动态 token 表与 Jev | AnyJev、Mini-Jev、受限词表解码、RLCD、DynaSpec/SpecVocab | “实现 helper logits → 动态候选表 → Jev 逐 token 选择，并带 EOS/回退/工具协议；在我们的检索范围内未见完全相同的 Jev 集成。” | 首个动态词表、首个 speculative decoding、首个 logits 辅助生成 |
+| 动态 token 表与 Jev | AnyJev、Mini-Jev、受限词表解码、RLCD、Generation with Dynamic Vocabulary、DVAGen、DynaSpec/SpecVocab | “实现 helper logits → 动态候选表 → Jev 逐 token 选择，并带 EOS/回退/工具协议；在我们的检索范围内未见完全相同的 Jev 集成。” | 首个动态词表、首个 speculative decoding、首个 logits 辅助生成 |
 | Jev-native agent | Jev-Mem、jev-memory、JevHarness、REFLEX、Hermes Jev Skills、官方/社区工具选择示例 | “提供公开、可运行、系统级的 Jev-native runtime 原型，并把选项与上下文双重虚拟化、故障恢复和评测放在同一接口中。” | 首个 Jev agent、首个 Jev memory、社区工作是‘玩具’ |
 
 ## 推荐论文表述
@@ -34,6 +34,7 @@
 - [REFLEX with Jev](https://arxiv.org/abs/2609.26532)、[Hermes Jev Skills](https://github.com/kerpopule/hermes-jev-skills)：更直接地证明“Jev 作为 agent 决策层/技能路由器”已经有人做；它们没有在我们检索到的材料中采用本项目的双空间 demand paging 与 `PAGE/REFINE/INVALIDATE` 语义。
 - [Pichay: demand paging for LLM context windows](https://arxiv.org/abs/2603.09023)、[CMV](https://arxiv.org/abs/2602.22402)：上下文虚拟化/分页的相邻系统工作。
 - [ToolChain*](https://arxiv.org/abs/2310.13227)：层次工具选择的相邻工作。
+- [Generation with Dynamic Vocabulary](https://arxiv.org/abs/2410.08481) 与 [DVAGen](https://arxiv.org/abs/2510.17115)：说明动态词汇本身已有先例；我们的差异候选只能写成 Jev Choice/EOS/fallback/工具协议的具体整合。
 - [AIOS](https://github.com/agiresearch/AIOS)：agent OS、调度和 context switch 的系统启发；不是本项目的 bounded decision option virtualization。
 
 ## 这对顶会定位意味着什么
