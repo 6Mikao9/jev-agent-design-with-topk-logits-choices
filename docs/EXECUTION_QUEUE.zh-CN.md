@@ -15,6 +15,8 @@
 - synthetic backend capability/page-recovery 基线已跑通；真实 Jev、多 backend 能力曲线和 RecoveryRate 仍待跑。
 - 新增 Runtime Governor、字段级参数 prior、adaptive set materialization 和安全包络设计；目前均为计划/假设，没有伪造实验结果。
 - lexical 超远捞针矩阵已完成首轮 18/18 精确词命中控制；语义干扰、摘要缺失、多针和两阶段 Jev 对照仍待跑。
+- 开放参数协议、文件/命令工具和显式 `:plan → :approve` REPL 已实现；默认 scripted chooser，`--live` 才连接真实 Jev，尚未做真实 Jev 交互质量评测。
+- PAGE 投机首轮 timing model 已完成：Top-1 命中45%、隐藏164ms；Top-2命中65%、隐藏238ms但浪费比67.5%。这是固定轨迹模型，不是端到端 Jev 加速，详见 [报告](reports/2026-09-24-speculative-page.zh-CN.md)。
 
 ## 已完成的基础事项
 

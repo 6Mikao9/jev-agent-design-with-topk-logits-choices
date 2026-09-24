@@ -12,6 +12,7 @@ from .models import Candidate, ChoiceOption, ChoiceResult, TaskState
 from .option_space import OptionSpace, OptionSpaceRegistry, SpaceOption
 from .parameter_prior import ParameterCandidate, ParameterPrior, ParameterRecord
 from .orchestrator import JevAgentOrchestrator, OrchestratorResult
+from .speculation import ShadowPage, SpeculationBuffer, SpeculationEvent, rank_pages
 from .paged_memory import (
     MemoryPage,
     MemoryReadBudgetExceeded,
@@ -73,6 +74,10 @@ __all__ = [
     "ParameterRecord",
     "JevAgentOrchestrator",
     "OrchestratorResult",
+    "ShadowPage",
+    "SpeculationBuffer",
+    "SpeculationEvent",
+    "rank_pages",
     "CompiledDecisionRule",
     "DecisionTraceGraph",
     "ErrorSummaryQueue",

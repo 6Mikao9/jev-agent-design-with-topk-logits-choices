@@ -16,6 +16,8 @@ models/
 
 # Local operations logs and caches
 ops/
+.jev_trace.json
+agent_workspace/
 .cache/
 .mypy_cache/
 .ruff_cache/

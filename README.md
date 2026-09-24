@@ -33,6 +33,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 
 - [完整技术设计（中文）](docs/DESIGN.zh-CN.md)：包含投机候选与 Top-k 回退、按决策影响管理多层记忆（I1）、依据依赖局部重规划（I3），以及其余原始设想。
 - [开放工具参数输入协议](docs/ARGUMENT_INPUT_PROTOCOL.zh-CN.md)：小模型提案、Jev 主动 `REFINE`/`REPROPOSE`、多字段并行和最终校验边界。
+- [实时交互 Agent](docs/REALTIME_CLI.zh-CN.md)：`python -m jev_agent.cli` 启动的 workspace 内 REPL，支持 scripted 或真实 Jev chooser。
 - [Full technical design (English)](docs/DESIGN.en.md)：英文版设计与相关工作边界。
 - [独立研究问题：候选覆盖诊断（I2）](docs/CANDIDATE_COVERAGE.zh-CN.md)：区分选项难以判断、选项缺失和信息不足，讨论恢复动作如何触发。
 - [Independent question: candidate coverage diagnosis (I2)](docs/CANDIDATE_COVERAGE.en.md)：英文版候选覆盖诊断。
