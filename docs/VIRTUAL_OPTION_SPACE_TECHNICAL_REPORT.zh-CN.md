@@ -58,6 +58,33 @@ state, page_id, permission_tag, revision, expires_at, cost
 
 实验比较：页级 LRU、LFU、LRU-K、按语义相似度的 semantic replacement、固定保留导航项，以及混合分数。报告 page fault rate、命中后决策质量、上下文字节、延迟、page-in 成本和错误副作用。页大小比较小页（2/4/8 个选项）、按 schema 聚簇页、按任务阶段聚簇页；不能只报告缓存命中率。
 
+### 4.1 255-entry 目录页与实际决策批次
+
+Choice 的 255 是 Jev API 的协议上限。我们把它用于逻辑目录页的最大容量，
+而不是把 255 个动作默认同时交给 Jev。一次调用还要保留 `PAGE`、`REFINE`、
+`CLARIFY`、`REVIEW`、`STOP`、`NONE` 等控制出口；当前预算实现默认预留 6 个名额，
+所以动作的协议上限是 249。原型的默认实际批次为 16 个动作，实验批次为 8/16/32
+（必要时才测 64）。
+
+```text
+logical catalog page (≤255)
+        ↓ directory / retrieval
+resident decision batch (8/16/32 actions + controls)
+        ↓
+Jev Choice
+```
+
+目录页只包含稳定 ID、摘要、定位和 revision；叶页才包含可提交候选。255-entry
+目录页会被拆成多个决策批次，`PAGE` 只 materialize 下一批；控制项在每个批次重复，
+不能因为候选属于同一目录页就突破 Choice 上限。`VirtualOptionManager` 当前的
+`max_resident=8` 是工作集原型限制，与 API 的 255 上限是两件事。具体规则和代码见
+[`OptionPageBudget`](OPTION_PAGE_BUDGET.zh-CN.md)。
+
+TypeSafe 当前文档给出的 Jev 1.13 上下文预算是每请求 64k tokens，`state` 加最长
+问题 32k tokens；我们的 24 KiB 分区 Context Frame 和本地推理服务 2048-token
+设置是刻意保守的工程预算，不是 Jev 上限。页大小仍需和描述字节数、延迟和真实
+决策质量一起评测。
+
 ## 5. Prefetch 与概率阈值
 
 Jev 分布中若 `P(NEXT_PAGE|s_t)>τ_page`，可异步准备下一页；若某页 `P(page_i|s_t)>τ_i` 或序列模型给出高置信后继，也可预取。`τ` 应在验证集校准，并通过成本约束选择：

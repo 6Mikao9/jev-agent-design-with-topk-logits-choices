@@ -46,6 +46,7 @@ English working title: **A Jev-Native Agent System: Tool Use, Hierarchical Memor
 - [框架、benchmark 与扩散方向资料](docs/RESEARCH_CATALOG.zh-CN.md)：官方来源、许可证边界和隔离评测建议。
 - [选项空间、状态机与可展开记忆](docs/OPTION_SPACES_STATE_MACHINE.zh-CN.md)：工具/记忆/预测分区、错误记忆和 88 轮验证队列。
 - [Virtual Option Space 技术报告](docs/VIRTUAL_OPTION_SPACE_TECHNICAL_REPORT.zh-CN.md)：resident/non-resident 选项、OptionFault、页表、working set、prefetch、异构空间与实验矩阵。
+- [Option Space 页与调用预算](docs/OPTION_PAGE_BUDGET.zh-CN.md)：255-entry 目录页、控制项预留、8/16/32 decision batch、Jev 上下文上限与 AIOS 启发。
 - [JEV 研究笔记](docs/JEV_RESEARCH_NOTES.zh-CN.md)：两阶段记忆、并行预测、超远捞针评测与失败边界。
 
 ## 核心设想

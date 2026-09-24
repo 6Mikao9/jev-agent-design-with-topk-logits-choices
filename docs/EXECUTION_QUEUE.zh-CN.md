@@ -196,6 +196,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - **第16轮：Working/Cold 规则与预算审计。** README 补充了当前 score、aging、minimum residency、hysteresis、revision/stale 的准确行为；明确 Working 被替换后只是进入 Cold，不会删除，Pinned 不参与 working 上限，新 block 先入 index。同步列出当前分散硬上限（working 8、memory 16/8/32 KiB、grounded evidence 4/16 KiB、materializer 16 KiB、refresh M≤4）和一套待验证的 24 KiB Context Frame 规划预算。当前仍没有统一 budget controller，规划值不能当实现结果。
 
 - **第17轮：分区 ContextBudgetController。** 将 24 KiB 规划预算实现为 `pinned/recent/working/evidence/options/trace` 六个独立分区；按 UTF-8 字节和优先级打包，分区不互相借用，Pinned/required 超限报错，普通低优先级 slice 记录 dropped。代理结果按预期丢弃长历史并拒绝 Pinned 超限；远端 137 项测试通过。报告为 `docs/reports/2026-09-24-context-budget.zh-CN.md`。尚未接入真实 Jev prompt，下一步需要 workload A/B/C 对照来验证这套预算是否提高证据召回和任务正确率。
+- **第18轮：255-entry Option Space 页预算。** 新增 `OptionPageBudget`，把 255 定义为 Jev Choice 的目录页/线协议上限，实际调用默认 16 个动作候选并预留 6 个 `PAGE/REFINE/CLARIFY/REVIEW/STOP/NONE` 控制项；40 个候选切分为 `[16,16,8]`，总数始终不超过 255。本地 bundled Python 140 项测试通过、3 项可选依赖跳过。报告为 `docs/reports/2026-09-24-option-page-budget.zh-CN.md`。TypeSafe 当前文档给出 Jev 1.13 每请求 64k tokens、`state`+最长问题 32k tokens；本项目 24 KiB/2048-token 是保守工程预算。下一步用真实 Jev 对照 8/16/32/64 decision batch，记录质量、控制项误选和延迟。
 
 
 

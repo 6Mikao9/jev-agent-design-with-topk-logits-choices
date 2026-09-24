@@ -29,6 +29,14 @@ from .memory_recovery import EvidenceRecoveryResult, RawEvidenceFallback
 from .grounded import GroundedArgumentAgent, GroundedResult
 from .models import Candidate, ChoiceOption, ChoiceResult, TaskState
 from .option_space import OptionSpace, OptionSpaceRegistry, SpaceOption
+from .option_budget import (
+    DEFAULT_OPTION_PAGE_BUDGET,
+    DEFAULT_CONTROL_RESERVE,
+    DEFAULT_DECISION_TARGET,
+    JEV_MAX_OPTIONS,
+    OptionCall,
+    OptionPageBudget,
+)
 from .parameter_prior import ParameterCandidate, ParameterPrior, ParameterRecord
 from .orchestrator import JevAgentOrchestrator, OrchestratorResult
 from .speculation import ShadowPage, SpeculationBuffer, SpeculationEvent, rank_pages
@@ -109,6 +117,12 @@ __all__ = [
     "OptionSpace",
     "OptionSpaceRegistry",
     "SpaceOption",
+    "DEFAULT_OPTION_PAGE_BUDGET",
+    "DEFAULT_CONTROL_RESERVE",
+    "DEFAULT_DECISION_TARGET",
+    "JEV_MAX_OPTIONS",
+    "OptionCall",
+    "OptionPageBudget",
     "ParameterCandidate",
     "ParameterPrior",
     "ParameterRecord",
