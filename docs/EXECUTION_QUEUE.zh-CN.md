@@ -189,5 +189,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第13轮：上下文空间建模。** README 新增 Context Space / Option Space 位置图和放入/移出规则，明确新事件先注册、Pinned/Working/Cold 区分、淘汰后进入 Cold、原始证据/trace 不自动注入、Virtual Option 与 Shadow Option 分开；同时标出当前实现仍是单级目录，正文 materialization、自动摘要和跨空间统一调度尚未完成。
 
+- **第14轮：正文 materialization 契约。** 新增显式 source mapping/callback 的 `ContextMaterializer`，按 UTF-8 字节预算、stale/expected revision 和 SHA-256 返回正文；它不直接读任意路径、不改变 resident set。4 个代理 case 中 2 个摘要遗漏 marker 成功回读，stale 和超预算各 1 个被拒绝；远端 130 项测试通过。报告为 `docs/reports/2026-09-24-context-materialization.zh-CN.md`。下一步才是把真实 Jev 的 `NO_EVIDENCE` 接到正文回读与 evidence contract。
+
 
 

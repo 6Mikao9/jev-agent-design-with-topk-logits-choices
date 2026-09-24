@@ -4,6 +4,14 @@ from .agent import Agent, AgentResult, ToolDefinition
 from .arguments import ArgumentField, ArgumentInput, ArgumentInputResult, FieldContext, ValueProposal
 from .context_residency import ContextBlock, ContextCandidate, ContextFault, ContextResidencyManager
 from .context_refresh import ContextRefreshCoordinator, ContextRefreshResult, ContextVerification, JevContextVerifier
+from .context_materialization import (
+    ContextMaterializationBudgetExceeded,
+    ContextMaterializationError,
+    ContextMaterializer,
+    ContextSourceNotFound,
+    MaterializedContext,
+    StaleContextMaterialization,
+)
 from .decision_model import ChoiceBackendAdapter, DecisionModel, DecisionRequest, OracleDecisionModel, ReplayDecisionModel
 from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
@@ -50,6 +58,12 @@ __all__ = [
     "ContextRefreshResult",
     "ContextVerification",
     "JevContextVerifier",
+    "ContextMaterializationBudgetExceeded",
+    "ContextMaterializationError",
+    "ContextMaterializer",
+    "ContextSourceNotFound",
+    "MaterializedContext",
+    "StaleContextMaterialization",
     "ChoiceBackendAdapter",
     "DecisionModel",
     "DecisionRequest",
