@@ -17,6 +17,7 @@
 - lexical 超远捞针矩阵已完成首轮 18/18 精确词命中控制；语义干扰、摘要缺失、多针和两阶段 Jev 对照仍待跑。
 - 开放参数协议、文件/命令工具和显式 `:plan → :approve` REPL 已实现；默认 scripted chooser，`--live` 才连接真实 Jev，尚未做真实 Jev 交互质量评测。
 - PAGE 投机首轮 timing model 已完成：Top-1 命中45%、隐藏164ms；Top-2命中65%、隐藏238ms但浪费比67.5%。这是固定轨迹模型，不是端到端 Jev 加速，详见 [报告](reports/2026-09-24-speculative-page.zh-CN.md)。
+- 40 轮任务第 1 轮已完成：新增有界同步 `DecisionRuntime.step()`，将 DecisionModel、VirtualOption/Context、PAGE、REFINE、统一 decision validation、可选执行器和 trace 接到同一条路径；新增 `PAGE→COMMIT` 与 `REFINE→child→COMMIT` 回放测试。远端全套 **147 项测试通过**。同时补齐 Core（无模型）、可选 0.8B helper、Live Jev 的中英文 quick start 和版本归档政策。该 runtime 仍是同步骨架，长轨迹真实 Jev、异步 governor 和多级页表仍待。
 
 ## 已完成的基础事项
 
