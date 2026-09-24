@@ -185,5 +185,9 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第10轮：按需 context refresh 原型已加入，但标为可关闭的 P2 实验。** `ContextRefreshCoordinator` 实现了 cooldown、阶段刷新预算、目录 `top-M`、并发 block verifier、epoch/revision 校验和原子 `commit_selected`；确定性代理轨迹为 6/6 提交、6/6 目标命中，重复触发 4/5 被抑制，旧 epoch 被拒绝，远端 125 项测试通过。报告为 `docs/reports/2026-09-24-context-refresh-coordinator.zh-CN.md`。这仍不是多级页表、真实 Jev 质量或正文加载结果。摘要策略暂定为 L0 结构化元数据 → L1 混合 RAG 预筛 → L2 0.8B 异步摘要候选 → L3 Jev 选择 → L4 原文/冲突校验；0.8B 摘要不可替代原文证据，纯 RAG 也不能替代 revision guard。
 
+- **第12轮：真实 Jev context refresh smoke。** 在 5 个不透明 block ID 的受控 case 上，目录召回为 4/4；gold case 初始驻留命中 1/4，刷新后 3/4，3 个真正缺失 case 恢复 2/3；无 gold 歧义 case 没有误刷新。20 次 verifier 调用的 P50/P95 为 663.8/703.2 ms；audit evidence case 保守返回 `NO_EVIDENCE`，不能直接判为语义错误。第一次候选 key 返回 401，换用下一条一次性 key 后完成；报告为 `docs/reports/2026-09-24-context-refresh-live.zh-CN.md`，不把失败凭据请求计入质量。
+
+- **第13轮：上下文空间建模。** README 新增 Context Space / Option Space 位置图和放入/移出规则，明确新事件先注册、Pinned/Working/Cold 区分、淘汰后进入 Cold、原始证据/trace 不自动注入、Virtual Option 与 Shadow Option 分开；同时标出当前实现仍是单级目录，正文 materialization、自动摘要和跨空间统一调度尚未完成。
+
 
 

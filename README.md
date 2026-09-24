@@ -98,6 +98,54 @@ python -m unittest discover -s tests -v
 系统抽象为可替换的 `DecisionModel: D(s,O) -> P(O)` backend；Jev 是当前原型 backend，未来可替换 Mock/Oracle 或其他 typed decision backend。Open World 通过 Virtual Option Space 管理 resident options，通过 Virtual Context Space 管理 resident context blocks，随后驱动 Decision Model 与 state transition。PAGE/EXPAND 扩大候选覆盖，REFINE 降低候选粒度，ContextFault 触发二阶段 context paging，REVISION/INVALIDATE 保持一致性。
 
 Context 分为 Pinned、Working、Cold 三层。Context block 元数据包括 `block_id/summary/raw_ref/revision/dependencies/last_access/access_count/utility/type/size/pinned`。按类型 aging：Pinned 不老化，任务状态慢老化，观察与 transient retrieval 快老化；utility aging 根据实际决策用途更新。采用 hysteresis、minimum residency、working-set history 与 phase-aware anti-thrashing。memory/RAG 在此是 context residency policy，而非普通“给模型找资料”。runtime 不依赖跨请求 prefix/KV reuse，允许 aggressive context mutation；这不等于声称 Jev backend 完全没有 KV cache。贡献边界是 Virtual Option + Context virtualization、decision-preserving refinement、fault/recovery/consistency 的组合，不声称各组件单点新颖。
+## Context Space 与 Option Space 的位置模型
+
+下面这张图描述当前 runtime 的空间边界。它区分了“存在哪里”和“本次 Jev 请求看见什么”；冷数据仍可寻址，但不会因为存在于索引中就自动进入当前请求。
+
+```text
+Open World / 新事件
+        │
+        ├── 用户约束、权限、预算、task revision
+        │       └── Control + Pinned Context（默认保留，不参与淘汰）
+        │
+        ├── 最新观察、工具结果、当前阶段状态
+        │       └── Working Context（受 max_working、aging、hysteresis 管理）
+        │
+        ├── 被淘汰的旧 block、未选分支、历史轨迹
+        │       └── Cold Context / Raw Evidence（保留 page_id，可按需回读）
+        │
+        ├── 工具、参数、预测 token 的逻辑全集
+        │       ├── Virtual Option Space：非 resident 页/候选目录
+        │       ├── Resident Option Space：本次 Jev 可见的工具/候选
+        │       └── Shadow Option Space：异步预取，验证后才 promote
+        │
+        └── 执行 trace、错误摘要、旧 revision、冲突证据
+                └── Trace / Evidence Space（默认不自动注入，需检索与校验）
+
+                  ┌────────────── 当前 Decision Frame ──────────────┐
+                  │ Pinned constraints │ Recent state │ Working blocks │
+                  │ Selected evidence │ Resident options │ Controls   │
+                  │ PAGE / REFINE / CLARIFY / STOP / COMMIT         │
+                  └──────────────────────┬─────────────────────────┘
+                                         │
+                                  DecisionModel / Jev
+                                         │
+                                  State transition
+```
+
+### 放入和移出的规则
+
+| 对象 | 新对象进入哪里 | 失去当前优先级后 | 再次需要时 |
+| --- | --- | --- | --- |
+| 用户明确约束、权限、任务不变量 | `Pinned Context`（由调用方显式标记） | 不自动淘汰；revision 改变时旧版本失效 | 读取当前 revision |
+| 最新事件、工具结果、阶段状态 | 先注册到 context index，再由 `refresh/rebuild` 进入 `Working` | 留在 index，移出 working 后成为 `Cold` | lexical/utility/phase 或 refresh coordinator 重新换入 |
+| 历史对话、未选分支、原始证据 | `Cold Context` 或 `PagedMemoryIndex` | 永久保留其稳定 ID，可能被标为 stale | 先目录召回，再有界原文读取和 revision 校验 |
+| 工具/参数候选 | 进入 virtual page/catalog | 不在 resident page 中，不能直接提交 | `PAGE/EXPAND` 或候选检索后 materialize |
+| 异步候选页 | `Shadow Option Space` | 过期、失败或 revision 不匹配时丢弃 | 重新 prefetch；只有显式 promote 才进入 resident |
+| 错误摘要与执行 trace | 外部 trace/evidence store | 默认不污染当前上下文 | 作为受控证据候选读取，不能直接当事实 |
+
+当前代码已经实现 `Pinned/Working/Cold`、稳定 ID、revision/stale guard、页表有界读取和 option shadow buffer；多级目录、真正的正文 materialization、自动 trace 摘要和统一跨空间调度仍是后续工作。`ContextRefreshCoordinator` 是可关闭的实验策略，不改变这张边界图：它只负责从目录候选中验证并提交少量 working blocks。
+
 ### 参数先验
 
 `jev_agent.parameter_prior.ParameterPrior` 可根据历史成功调用生成参数候选，并保留来源、置信度和 revision。它不会替代 Jev 决策，且带有过期校验。
