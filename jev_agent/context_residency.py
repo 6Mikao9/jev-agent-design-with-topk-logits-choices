@@ -149,7 +149,12 @@ class ContextResidencyManager:
         scored = [
             ContextCandidate(block.block_id, self._score(block, query_terms, phase), block.phase)
             for block in self._blocks.values()
-            if not block.stale and not block.pinned and (query_terms & _terms(block.summary) or not query_terms)
+            if not block.stale and not block.pinned and (
+                query_terms & _terms(block.summary)
+                or not query_terms
+                or block.utility_score > 0.0
+                or (phase is not None and block.phase == phase)
+            )
         ]
         return tuple(sorted(scored, key=lambda item: (-item.score, item.block_id)))
 

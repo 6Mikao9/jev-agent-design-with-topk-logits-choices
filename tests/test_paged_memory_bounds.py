@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 import unittest
 
 from jev_agent.paged_memory import (
@@ -76,6 +77,20 @@ class PagedMemoryBoundsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             index.upsert(MemoryPage("one", "one", "original", revision=3,
                                     dependency_versions={"db": 1}))
+
+    def test_recency_tie_break_uses_age_not_absolute_timestamp(self):
+        index = PagedMemoryIndex(recency_half_life_seconds=10.0)
+        now = datetime.now(timezone.utc).timestamp()
+        index.upsert(MemoryPage("old", "same topic", "old", last_accessed=now - 100.0))
+        index.upsert(MemoryPage("new", "same topic", "new", last_accessed=now))
+        self.assertEqual([item.page_id for item in index.select_pages("topic")], ["new", "old"])
+
+    def test_large_early_page_does_not_hide_later_page_in_bounded_scan(self):
+        index = PagedMemoryIndex()
+        index.upsert(MemoryPage("large", "large", "x" * 100))
+        index.upsert(MemoryPage("needle", "note", "needle marker"))
+        found = index.search_content("needle", max_scan_bytes=32)
+        self.assertEqual([item.page_id for item in found], ["needle"])
 
 
 if __name__ == "__main__":

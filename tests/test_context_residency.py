@@ -38,6 +38,15 @@ class ContextResidencyTests(unittest.TestCase):
         with self.assertRaises(ContextFault):
             manager.require("a")
 
+    def test_positive_utility_keeps_lexically_disjoint_block_eligible(self):
+        manager = ContextResidencyManager(max_working=1)
+        manager.register(ContextBlock("a", "database migration", "raw://a"))
+        manager.register(ContextBlock("b", "unrelated wording", "raw://b"))
+        manager.rebuild("migration")
+        manager.mark_useful("a", 1.0)
+        manager.rebuild("schema")
+        self.assertIn("a", [item.block_id for item in manager.candidates("schema")])
+
 
 if __name__ == "__main__":
     unittest.main()

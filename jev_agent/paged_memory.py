@@ -8,6 +8,7 @@ page IDs to ``read_selected`` after the two candidate rounds.
 """
 
 import re
+import math
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -56,10 +57,13 @@ class MemoryReadBudgetExceeded(ValueError):
 class PagedMemoryIndex:
     """A bounded, deterministic page table with lexical prefiltering and LRU metadata."""
 
-    def __init__(self, *, max_pages: int = 10_000) -> None:
+    def __init__(self, *, max_pages: int = 10_000, recency_half_life_seconds: float = 3_600.0) -> None:
         if max_pages < 1:
             raise ValueError("max_pages must be positive")
+        if not math.isfinite(recency_half_life_seconds) or recency_half_life_seconds <= 0:
+            raise ValueError("recency_half_life_seconds must be positive and finite")
         self.max_pages = max_pages
+        self.recency_half_life_seconds = float(recency_half_life_seconds)
         self._pages: dict[str, MemoryPage] = {}
 
     def upsert(self, page: MemoryPage) -> None:
@@ -104,6 +108,7 @@ class PagedMemoryIndex:
         if limit < 1:
             raise ValueError("limit must be positive")
         query = _terms(context)
+        now = datetime.now(timezone.utc).timestamp()
         scored: list[tuple[float, MemoryPage]] = []
         for page in self._pages.values():
             if page.stale or (page.sensitive and not allow_sensitive):
@@ -111,9 +116,13 @@ class PagedMemoryIndex:
             terms = _terms(" ".join((page.summary, *page.tags)))
             overlap = len(query & terms)
             score = float(overlap)
-            # A tiny recency tie-breaker keeps hot pages ahead without allowing
-            # LRU to hide a relevant old page with a positive lexical score.
-            score += min(page.last_accessed / 1e12, 1e-6)
+            # A tiny, age-based tie-breaker keeps recently useful pages ahead
+            # without allowing recency to hide an older page with a positive
+            # lexical score.  Using the Unix timestamp directly collapses all
+            # normal pages to the same value (the old ``min(ts / 1e12, 1e-6)``
+            # formula had exactly that bug).
+            age = max(0.0, now - page.last_accessed)
+            score += 1e-6 * math.exp(-age / self.recency_half_life_seconds)
             if overlap or not query:
                 scored.append((score, page))
         scored.sort(key=lambda item: (-item[0], item[1].page_id))
@@ -151,7 +160,10 @@ class PagedMemoryIndex:
                 continue
             size = len(page.content.encode("utf-8"))
             if scanned + size > max_scan_bytes:
-                break
+                # A large/early page must not hide later candidates that still
+                # fit the bounded scan.  Skip it and continue in page-table
+                # order; the read budget remains a hard upper bound.
+                continue
             scanned += size
             content_folded = page.content.casefold()
             marker_hits = sum(1 for marker in markers if marker in content_folded)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from typing import Any, Iterable, Protocol
 
 
@@ -101,3 +102,41 @@ class ChoiceBackend(Protocol):
     def choose(
         self, *, state: str, instructions: str, options: list[ChoiceOption]
     ) -> ChoiceResult: ...
+
+
+def validate_choice_result(
+    result: ChoiceResult,
+    options: list[ChoiceOption] | tuple[ChoiceOption, ...],
+    *,
+    normalization_tolerance: float = 0.02,
+) -> ChoiceResult:
+    """Validate one decision result against the exact option surface.
+
+    Every runtime path must use the same boundary: the selected ID must be
+    resident, probability keys must match the submitted IDs exactly, values
+    must be finite probabilities, confidence must be finite in ``[0, 1]``,
+    and the published distribution must be normalized within the small
+    provider rounding tolerance used by the existing Jev adapters.
+    """
+    if not isinstance(result, ChoiceResult):
+        raise ValueError("decision backend must return ChoiceResult")
+    expected = {option.option_id for option in options}
+    if not expected or result.choice not in expected or set(result.probabilities) != expected:
+        raise ValueError("choice or probability keys do not match submitted options")
+    confidence = float(result.confidence)
+    if not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
+        raise ValueError("confidence must be a finite value in [0, 1]")
+    tolerance = float(normalization_tolerance)
+    if not math.isfinite(tolerance) or tolerance < 0:
+        raise ValueError("normalization_tolerance must be non-negative and finite")
+    total = 0.0
+    for option_id, value in result.probabilities.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"probability must be numeric: {option_id}")
+        score = float(value)
+        if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+            raise ValueError(f"invalid probability value: {option_id}")
+        total += score
+    if not math.isclose(total, 1.0, abs_tol=tolerance):
+        raise ValueError("choice distribution is not normalized")
+    return result

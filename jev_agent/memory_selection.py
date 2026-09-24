@@ -10,7 +10,7 @@ import math
 from dataclasses import dataclass, field
 from time import perf_counter
 
-from .models import ChoiceBackend, ChoiceOption, ChoiceResult
+from .models import ChoiceBackend, ChoiceOption, ChoiceResult, validate_choice_result
 from .paged_memory import MemoryPage, MemoryReadBudgetExceeded, PagedMemoryIndex, StaleMemoryPage
 
 
@@ -38,21 +38,8 @@ class MemorySelectionResult:
 
 
 def _validated_scores(decision: ChoiceResult, options: list[ChoiceOption]) -> dict[str, float]:
-    expected = {option.option_id for option in options}
-    if decision.choice not in expected or set(decision.probabilities) != expected:
-        raise ValueError("choice or probability keys do not match submitted options")
-    scores = {}
-    for key, value in decision.probabilities.items():
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError("probabilities must be numeric")
-        score = float(value)
-        if not math.isfinite(score) or not 0 <= score <= 1:
-            raise ValueError("invalid probability value")
-        scores[key] = score
-    # Allow small rounding error in the endpoint's published probabilities.
-    if not math.isclose(sum(scores.values()), 1.0, abs_tol=0.02):
-        raise ValueError("choice distribution is not normalized")
-    return scores
+    validate_choice_result(decision, options)
+    return {key: float(value) for key, value in decision.probabilities.items()}
 
 
 class TwoStageMemorySelector:

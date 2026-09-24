@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Protocol, Sequence
 
-from .models import ChoiceBackend, ChoiceOption, ChoiceResult
+from .models import ChoiceBackend, ChoiceOption, ChoiceResult, validate_choice_result
 
 
 @dataclass(frozen=True)
@@ -36,9 +36,8 @@ class ChoiceBackendAdapter(ChoiceBackend):
     ) -> ChoiceResult:
         if not options:
             raise ValueError("decision model requires at least one option")
-        return self.model.decide(
-            DecisionRequest(state, instructions, tuple(options))
-        )
+        result = self.model.decide(DecisionRequest(state, instructions, tuple(options)))
+        return validate_choice_result(result, options)
 
 
 class ReplayDecisionModel:
@@ -56,9 +55,7 @@ class ReplayDecisionModel:
         result = self._results[self._index]
         self._index += 1
         valid = {option.option_id for option in request.options}
-        if result.choice not in valid or set(result.probabilities) != valid:
-            raise ValueError("replay result does not match current option set")
-        return result
+        return validate_choice_result(result, request.options)
 
 
 class OracleDecisionModel:
@@ -79,7 +76,9 @@ class OracleDecisionModel:
         if choice not in valid:
             raise ValueError(f"oracle selected an unavailable option: {choice}")
         probabilities = {
-            option_id: 1.0 if option_id == choice else 0.0
-            for option_id in valid
+            option.option_id: 1.0 if option.option_id == choice else 0.0
+            for option in request.options
         }
-        return ChoiceResult(choice, probabilities, 1.0, self.model_name)
+        return validate_choice_result(
+            ChoiceResult(choice, probabilities, 1.0, self.model_name), request.options
+        )
