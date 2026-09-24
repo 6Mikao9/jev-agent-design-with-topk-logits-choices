@@ -19,6 +19,7 @@ class DecisionRequest:
     instructions: str
     options: tuple[ChoiceOption, ...]
     context: tuple[str, ...] = ()
+    revision: int = 1
 
 
 class DecisionModel(Protocol):
