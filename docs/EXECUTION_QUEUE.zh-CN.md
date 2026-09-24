@@ -214,5 +214,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第7轮：query-aware lexical ranking 负对照。** 为目录只读 query/摘要增加可选 `directory_ranking=lexical`，prompt 暴露剩余窗口数；离线新增 2 个回归测试，远端完整测试 156/156。seed=31 wrong-page verifier 12-case 词法排序为 7/12（58.3%），默认 catalog 子集为 9/12；调用降至 48、case P50/P95 为 2.62/3.38 秒，但首页定位降至 7/12，失败多为 verifier 后过早 STOP。相对预期：质量更差、成本略好，词法排序不设默认，只保留 baseline。报告为 `docs/reports/2026-09-24-directory-ranking-live.zh-CN.md`；下一步做语义/混合检索候选集、并行 verifier 和 false-reject 分项。
 
+- **第8轮：执行结果 verdict 与依赖失效。** 新增 `ExecutionVerdict` 和 `DecisionRuntime.step(validate_execution=...)`：合法但过期的工具结果会返回 `execution_rejected`，推进依赖 revision，定向失效旧 memory/context，并要求下一次决策选择刷新；拒绝结果不会自动重试，也不记为 `executed`。集成测试覆盖 quota stale read → invalidation → refresh，远端完整测试 157/157。相对预期：符合预期，补上了安全和审计边界，但不是 Jev 质量提升数字。报告为 `docs/reports/2026-09-24-runtime-execution-verdict.zh-CN.md`。下一步扩展 `applied/rejected/unknown` execution receipt、真实文件/命令工具校验和幂等对账。
+
 
 

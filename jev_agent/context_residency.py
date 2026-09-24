@@ -270,3 +270,13 @@ class ContextResidencyManager:
         block = self._blocks[block_id]
         block.stale = True
         self._working = [item for item in self._working if item != block_id]
+
+    def invalidate_dependencies(self, dependency_ids: Iterable[str]) -> tuple[str, ...]:
+        """Evict blocks derived from changed dependencies, including pinned ones."""
+        changed = set(dependency_ids)
+        invalidated = []
+        for block_id, block in self._blocks.items():
+            if not block.stale and changed.intersection(block.dependencies):
+                self.invalidate(block_id)
+                invalidated.append(block_id)
+        return tuple(invalidated)

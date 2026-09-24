@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from .context_residency import ContextBlock, ContextFault, ContextResidencyManager
 from .decision_model import DecisionModel, DecisionRequest
+from .memory import MemoryBank
 from .models import ChoiceOption, ChoiceResult, TaskState, validate_choice_result
 from .state_machine import DecisionTraceGraph
 from .virtual_option import (
@@ -43,6 +44,24 @@ class RuntimeState:
 
 
 @dataclass(frozen=True)
+class ExecutionVerdict:
+    """Post-execution evidence check; rejection never triggers an automatic retry."""
+
+    accepted: bool
+    reason: str = ""
+    changed_dependencies: tuple[str, ...] = ()
+    observation: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.accepted, bool):
+            raise ValueError("accepted must be a bool")
+        if not self.accepted and not self.reason:
+            raise ValueError("a rejected execution requires a reason")
+        if any(not item for item in self.changed_dependencies):
+            raise ValueError("changed dependency IDs must be non-empty")
+
+
+@dataclass(frozen=True)
 class RuntimeStepResult:
     step: int
     status: str
@@ -54,6 +73,9 @@ class RuntimeStepResult:
     faults: tuple[str, ...] = ()
     tool_result: Any = None
     reason: str = ""
+    invalidated_memory_ids: tuple[str, ...] = ()
+    invalidated_context_ids: tuple[str, ...] = ()
+    revised_dependencies: tuple[str, ...] = ()
 
 
 class DecisionRuntime:
@@ -65,6 +87,7 @@ class DecisionRuntime:
         *,
         option_manager: VirtualOptionManager | None = None,
         context_manager: ContextResidencyManager | None = None,
+        memory_bank: MemoryBank | None = None,
         trace: DecisionTraceGraph | None = None,
         max_options: int = 255,
         max_page_attempts: int = 2,
@@ -76,6 +99,7 @@ class DecisionRuntime:
         self.decision_model = decision_model
         self.option_manager = option_manager or VirtualOptionManager()
         self.context_manager = context_manager
+        self.memory_bank = memory_bank
         self.trace = trace or DecisionTraceGraph()
         self.max_options = max_options
         self.max_page_attempts = max_page_attempts
@@ -145,13 +169,15 @@ class DecisionRuntime:
         context_updates: Iterable[ContextBlock] = (),
         phase: str | None = None,
         execute: Callable[[VirtualOption], Any] | None = None,
+        validate_execution: Callable[[VirtualOption, Any, TaskState], ExecutionVerdict] | None = None,
     ) -> RuntimeStepResult:
         """Run one decision and one bounded state transition.
 
         A PAGE/REFINE action changes only the virtual option manager.  A
         resident option can be committed and optionally executed by the
-        caller's side-effect function.  All faults are returned and traced,
-        never silently converted into a different option.
+        caller's side-effect function.  A post-execution validator may reject
+        a legal-looking but inconsistent result and invalidate dependent
+        memory/context.  Rejected executions are never retried implicitly.
         """
         self._step += 1
         contexts: tuple[ContextBlock, ...] = ()
@@ -237,11 +263,59 @@ class DecisionRuntime:
                 )
             selected = self.option_manager.resolve(choice)
             tool_result = execute(selected) if execute is not None else None
+            invalidated_memory_ids: tuple[str, ...] = ()
+            invalidated_context_ids: tuple[str, ...] = ()
+            revised_dependencies: tuple[str, ...] = ()
+            if execute is not None and validate_execution is not None:
+                try:
+                    verdict = validate_execution(selected, tool_result, task)
+                    if not isinstance(verdict, ExecutionVerdict):
+                        raise TypeError("execution validator must return ExecutionVerdict")
+                except Exception as error:
+                    reason = f"execution validation failed: {type(error).__name__}"
+                    self.trace.record(source="runtime", target="EXECUTION_UNVERIFIED",
+                                      label=choice, success=False, error=reason)
+                    return RuntimeStepResult(self._step, "execution_unverified", choice, decision,
+                                             option_id=choice, context_ids=context_ids,
+                                             resident_option_ids=resident_ids,
+                                             faults=(type(error).__name__,), tool_result=tool_result,
+                                             reason=reason)
+                revised_dependencies = tuple(dict.fromkeys(verdict.changed_dependencies))
+                for index, dependency_id in enumerate(revised_dependencies):
+                    task.revise(dependency_id, verdict.observation if index == 0 else None)
+                if revised_dependencies:
+                    if self.memory_bank is not None:
+                        invalidated_memory_ids = tuple(self.memory_bank.invalidate_changed(
+                            task.dependency_versions, revised_dependencies
+                        ))
+                    if self.context_manager is not None:
+                        invalidated_context_ids = self.context_manager.invalidate_dependencies(
+                            revised_dependencies
+                        )
+                if not verdict.accepted:
+                    self.trace.record(source="runtime", target="EXECUTION_REJECTED",
+                                      label=choice, success=False, error=verdict.reason,
+                                      guard=f"task_revision == {task.revision}")
+                    return RuntimeStepResult(
+                        self._step, "execution_rejected", choice, decision,
+                        option_id=choice, context_ids=tuple(
+                            block.block_id for block in self.context_manager.resident()
+                        ) if self.context_manager is not None else context_ids,
+                        resident_option_ids=resident_ids,
+                        faults=("ExecutionRejected",), tool_result=tool_result,
+                        reason=verdict.reason,
+                        invalidated_memory_ids=invalidated_memory_ids,
+                        invalidated_context_ids=invalidated_context_ids,
+                        revised_dependencies=revised_dependencies,
+                    )
             status = "executed" if execute is not None else "committed"
             self.trace.record(source="runtime", target=status, label=choice, success=True)
             return RuntimeStepResult(self._step, status, choice, decision,
                                      option_id=choice, context_ids=context_ids,
-                                     resident_option_ids=resident_ids, tool_result=tool_result)
+                                     resident_option_ids=resident_ids, tool_result=tool_result,
+                                     invalidated_memory_ids=invalidated_memory_ids,
+                                     invalidated_context_ids=invalidated_context_ids,
+                                     revised_dependencies=revised_dependencies)
         except (OptionFault, RefineFault, StaleVirtualOption, ContextFault) as error:
             reason = str(error)
             self.trace.record(source="runtime", target="FAULT", label=choice,

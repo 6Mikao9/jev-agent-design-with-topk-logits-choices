@@ -39,7 +39,7 @@ from .option_budget import (
 )
 from .parameter_prior import ParameterCandidate, ParameterPrior, ParameterRecord
 from .orchestrator import JevAgentOrchestrator, OrchestratorResult
-from .runtime import DecisionRuntime, RuntimeState, RuntimeStepResult
+from .runtime import DecisionRuntime, ExecutionVerdict, RuntimeState, RuntimeStepResult
 from .speculation import ShadowPage, SpeculationBuffer, SpeculationEvent, rank_pages
 from .paged_memory import (
     MemoryPage,
@@ -130,6 +130,7 @@ __all__ = [
     "JevAgentOrchestrator",
     "OrchestratorResult",
     "DecisionRuntime",
+    "ExecutionVerdict",
     "RuntimeState",
     "RuntimeStepResult",
     "ShadowPage",
