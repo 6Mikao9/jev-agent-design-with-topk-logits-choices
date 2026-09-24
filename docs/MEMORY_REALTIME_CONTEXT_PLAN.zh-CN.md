@@ -78,6 +78,34 @@
 
 **测法**：屏蔽/交换 evidence span，使用已标注支持/反驳/无关三类；报告 unsupported execution、conflict recall、stale rejection、答案正确率、额外调用和延迟。
 
+### G. 按需上下文刷新协调器（实验性）
+
+当前实现的 `ContextResidencyManager.refresh()` 是调用方显式触发的同步重建；它没有让 Jev 自行决定何时刷新，也没有对每个 block 做并发支持判断。下一步可以把刷新封装为一个可关闭的 `ContextRefreshCoordinator`：
+
+```text
+触发门控 → 目录 top-M → 并发 block verifier → epoch/revision 校验 → 原子换入 top-K
+```
+
+verifier 的输出必须包含 `YES/NO/NO_EVIDENCE`、支持理由或 evidence reference，以及未经校准的排序分数。Jev 的 choice probability 不能直接当作可靠的相关性概率。协调器需要 cooldown、每阶段刷新上限、重复请求合并、无收益熔断和负缓存，不能只靠 system prompt 抑制 refresh storm。任何状态 epoch 或 block revision 变化都会丢弃这一轮结果；只有所有候选仍然新鲜时才能提交 working set。
+
+首版建议 `M=2/4`、`K=1/2`，默认关闭自动触发。先用 deterministic verifier 测协议，再用少量真实 Jev 测目录召回、verifier F1、无效刷新率、调用数、P50/P95 和上下文 churn。该协调器是对现有两阶段 memory selector 的补充实验，不替代有界 raw fallback。
+
+### H. 摘要模型与 RAG 的取舍
+
+0.8B helper 可以用于**异步生成结构化摘要候选**，但不应成为唯一事实来源，也不应在关键路径上直接覆盖原文。日期、否定、版本、权限和冲突字段最容易被小模型摘要遗漏。摘要需要携带 `source page_id`、revision、证据 span/字段和内容 hash；摘要失败或 revision 不一致时回到原文。
+
+更稳妥的分层是：
+
+```text
+L0 结构化元数据、实体、时间、revision、依赖
+L1 稀疏/向量/混合 RAG 召回候选页
+L2 0.8B 生成的短结构化摘要（异步、可丢弃）
+L3 Jev 选择少量页
+L4 原文证据与冲突校验
+```
+
+纯 RAG 可以替代词法预筛，但不能替代证据读取和 revision guard；纯摘要也不能替代 RAG。当前原型继续采用可解释的 lexical/RRF 预筛和原文回读，0.8B 摘要与向量索引列为后续对照变量，而不是默认依赖。
+
 ## 3. 分阶段消融路线
 
 ### 阶段 P0：确定性记忆基线（下一轮优先）

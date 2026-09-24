@@ -200,6 +200,48 @@ class ContextResidencyManager:
                 block.access_count += 1
         return self.resident()
 
+    def commit_selected(
+        self,
+        block_ids: Iterable[str],
+        *,
+        expected_revisions: dict[str, int] | None = None,
+    ) -> tuple[ContextBlock, ...]:
+        """Atomically install an explicitly verified working set.
+
+        The normal :meth:`rebuild` path computes a lexical/utility ranking.
+        A refresh coordinator may instead ask a decision model to verify a
+        bounded set of blocks.  This method is the commit boundary for that
+        path: every ID and revision is validated before the working set is
+        changed, and pinned blocks remain outside the working-set budget.
+        """
+        requested = list(block_ids)
+        if len(requested) > self.max_working:
+            raise ValueError("selected context blocks exceed max_working")
+        if len(set(requested)) != len(requested):
+            raise ValueError("block_ids must not contain duplicates")
+        expected_revisions = expected_revisions or {}
+        validated: list[ContextBlock] = []
+        for block_id in requested:
+            block = self._blocks.get(block_id)
+            if block is None or block.stale:
+                raise ContextFault(f"context block is unavailable or stale: {block_id}")
+            expected = expected_revisions.get(block_id)
+            if expected is not None and block.revision != expected:
+                raise ContextFault(f"context revision changed: {block_id}")
+            if block.pinned:
+                raise ValueError("pinned blocks are not part of the working-set selection")
+            validated.append(block)
+
+        previous = set(self._working)
+        self._step += 1
+        self._working = requested
+        for block in validated:
+            if block.block_id not in previous:
+                block.last_loaded_step = self._step
+                block.last_access = self._step
+                block.access_count += 1
+        return self.resident()
+
     def require(self, block_id: str, *, expected_revision: int | None = None) -> ContextBlock:
         block = self._blocks.get(block_id)
         if block is None or block.stale:

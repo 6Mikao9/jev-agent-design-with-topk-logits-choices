@@ -183,5 +183,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - `benchmarks/benchmark_jev_bounded_paging.py` 已完成 seed=7 的真实多跳评估：45/48，错误页起步9/12；范围复核开发集复跑48/48，代价为116→174次调用。所有目录/工具/控制选项统一计入8项上限，工具resident另限2。下一轮优先冻结提示后验证未见请求、加入拒绝/歧义负例和retrieval对照；报告 `docs/reports/2026-09-24-bounded-paging.zh-CN.md`。
 - seed=19顺序/目标位置检查已完成：相同提示下24 episodes为20/24→23/24，错误页恢复8/12→11/12；剩余一例直接CLARIFY，无候选可供复核。优先加入缺能力/真歧义负例，不允许无条件覆盖CLARIFY；完整70个单元测试通过。本轮是A的诊断推进，B/C完整闭环尚未完成。
 
+- **第10轮：按需 context refresh 原型已加入，但标为可关闭的 P2 实验。** `ContextRefreshCoordinator` 实现了 cooldown、阶段刷新预算、目录 `top-M`、并发 block verifier、epoch/revision 校验和原子 `commit_selected`；确定性代理轨迹为 6/6 提交、6/6 目标命中，重复触发 4/5 被抑制，旧 epoch 被拒绝，远端 125 项测试通过。报告为 `docs/reports/2026-09-24-context-refresh-coordinator.zh-CN.md`。这仍不是多级页表、真实 Jev 质量或正文加载结果。摘要策略暂定为 L0 结构化元数据 → L1 混合 RAG 预筛 → L2 0.8B 异步摘要候选 → L3 Jev 选择 → L4 原文/冲突校验；0.8B 摘要不可替代原文证据，纯 RAG 也不能替代 revision guard。
+
 
 
