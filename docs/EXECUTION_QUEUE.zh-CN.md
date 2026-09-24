@@ -212,5 +212,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 
 - **第6轮：目录窗口 visited set 与终止预算。** `benchmark_jev_bounded_paging.py` 不再让 `NEXT` 循环已访问窗口，新增 `directory_exhausted` trace/summary 与访问窗口计数；远端完整测试仍为 154/154。seed=31 的 `wrong_page` 12-case verifier 子集为 9/12，首页定位 10/12，missing detection 11/12，2 个 case 明确以 `directory_exhausted` 结束，调用 58 次、case P50/P95 为 3.30/4.53 秒。相对预期：终止性更好，正确率暂未证明提升，且与上一轮不是严格 paired 比较。报告为 `docs/reports/2026-09-24-directory-visited-budget.zh-CN.md`；下一步加入 query-aware ranking、remaining-window 状态和 false-reject/locator-miss 分项。
 
+- **第7轮：query-aware lexical ranking 负对照。** 为目录只读 query/摘要增加可选 `directory_ranking=lexical`，prompt 暴露剩余窗口数；离线新增 2 个回归测试，远端完整测试 156/156。seed=31 wrong-page verifier 12-case 词法排序为 7/12（58.3%），默认 catalog 子集为 9/12；调用降至 48、case P50/P95 为 2.62/3.38 秒，但首页定位降至 7/12，失败多为 verifier 后过早 STOP。相对预期：质量更差、成本略好，词法排序不设默认，只保留 baseline。报告为 `docs/reports/2026-09-24-directory-ranking-live.zh-CN.md`；下一步做语义/混合检索候选集、并行 verifier 和 false-reject 分项。
+
 
 

@@ -14,6 +14,7 @@ import json
 import math
 from pathlib import Path
 import random
+import re
 import statistics
 import sys
 from time import perf_counter
@@ -85,6 +86,25 @@ class EvaluationCase:
     expected_tool: str
 
 
+def rank_directory_pages(query: str, pages: dict, *, mode: str = "catalog") -> list[str]:
+    """Order pages using only the request and page summaries.
+
+    ``catalog`` preserves the randomized catalog order used by earlier
+    reports.  ``lexical`` is a transparent retrieval baseline; it does not
+    inspect evaluation labels or tool contents.
+    """
+    if mode not in {"catalog", "lexical"}:
+        raise ValueError("directory ranking must be catalog or lexical")
+    page_ids = list(pages)
+    if mode == "catalog":
+        return page_ids
+    query_terms = set(re.findall(r"[a-z0-9]+", query.casefold()))
+    def score(page_id: str) -> tuple[int, str]:
+        summary_terms = set(re.findall(r"[a-z0-9]+", pages[page_id]["summary"].casefold()))
+        return (len(query_terms & summary_terms), page_id)
+    return sorted(page_ids, key=score, reverse=True)
+
+
 def catalog_pages(seed: int) -> dict:
     records = list(CATALOG)
     random.Random(seed).shuffle(records)
@@ -127,7 +147,7 @@ def register(manager: VirtualOptionManager, pages: dict, page_id: str, revision:
 
 def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
                 *, choice_cap: int = 8, max_calls: int = 10, allow_paging: bool = True,
-                verify_candidate: bool = False) -> dict:
+                verify_candidate: bool = False, directory_ranking: str = "catalog") -> dict:
     """Runtime cannot access EvaluationCase or any expected page/tool labels."""
     if choice_cap < 5 or max_calls < 1:
         raise ValueError("choice_cap must be >=5; max_calls must be positive")
@@ -140,7 +160,7 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
         manager.page_in(active)
         if request.stale_initial:
             revisions[active] = 2  # injected environment change, not an answer label
-    ids = list(pages)
+    ids = rank_directory_pages(request.query, pages, mode=directory_ranking)
     window_size = choice_cap - 3
     windows = [ids[i:i + window_size] for i in range(0, len(ids), window_size)]
     cursor = 0
@@ -186,8 +206,13 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
             stage = "directory"
             options = [ChoiceOption(f"PAGE:{pid}", pages[pid]["summary"]) for pid in windows[cursor]]
             options.append(ChoiceOption("NEXT", "None of these page summaries fits; view the next catalog window."))
-            state = f"User request: {request.query}\nCatalog window {cursor + 1}/{len(windows)}. Only these summaries are currently shown.\n{last_observation}"
-            instructions = "Choose a page that contains the requested capability. If it is absent here, choose NEXT to continue browsing. CLARIFY is for ambiguous user intent, not for a missing page."
+            remaining = len(windows) - len(visited_windows)
+            state = (f"User request: {request.query}\n"
+                     f"Catalog window {cursor + 1}/{len(windows)}; visited {len(visited_windows)}/{len(windows)}; "
+                     f"remaining windows {remaining}. Only these summaries are currently shown.\n{last_observation}")
+            instructions = ("Choose a page that contains the requested capability. If it is absent here and remaining windows "
+                            "is positive, choose NEXT to continue browsing. If no windows remain, choose CLARIFY or STOP. "
+                            "CLARIFY is for ambiguous user intent, not for a missing page.")
         options.extend([ChoiceOption("CLARIFY", "Ask the user to resolve an ambiguous request."),
                         ChoiceOption("STOP", "End without selecting a tool.")])
         if len(options) > choice_cap:
@@ -255,6 +280,7 @@ def run_episode(chooser: ChoiceBackend, request: RuntimeRequest, pages: dict,
             "events": events, "resident_peak": resident_peak, "resident_bound": 2,
             "directory_windows_visited": len(visited_windows),
             "directory_window_count": len(windows),
+            "directory_ranking": directory_ranking,
             "submitted_choice_peak": max((c["option_count"] for c in calls), default=0),
             "choice_cap": choice_cap, "wall_ms": (perf_counter()-started)*1000,
             "external_side_effects": 0}
@@ -315,12 +341,13 @@ def main() -> None:
                         default=["empty", "wrong_page", "stale", "correct_resident"])
     parser.add_argument("--no-paging", action="store_true")
     parser.add_argument("--verify-candidate", action="store_true")
+    parser.add_argument("--directory-ranking", choices=("catalog", "lexical"), default="catalog")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--key-stdin", action="store_true")
     args = parser.parse_args()
     config = {"seed": args.seed, "choice_cap": args.choice_cap, "max_calls": args.max_calls,
               "limit": args.limit, "conditions": args.states, "allow_paging": not args.no_paging,
-              "verify_candidate": args.verify_candidate,
+              "verify_candidate": args.verify_candidate, "directory_ranking": args.directory_ranking,
               "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     pages = catalog_pages(args.seed)
     cases = make_cases(pages, args.states)
@@ -347,7 +374,8 @@ def main() -> None:
             continue
         trace = run_episode(chooser, case.request, pages, choice_cap=args.choice_cap,
                             max_calls=args.max_calls, allow_paging=not args.no_paging,
-                            verify_candidate=args.verify_candidate)
+                            verify_candidate=args.verify_candidate,
+                            directory_ranking=args.directory_ranking)
         row = score_episode(case, trace)
         report["rows"].append(row)
         report["summary"] = summarize(report["rows"])

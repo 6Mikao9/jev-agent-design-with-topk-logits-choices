@@ -1,7 +1,7 @@
 import unittest
 
 from benchmarks.benchmark_jev_bounded_paging import (
-    EvaluationCase, RuntimeRequest, catalog_pages, run_episode, score_episode,
+    EvaluationCase, RuntimeRequest, catalog_pages, rank_directory_pages, run_episode, score_episode,
 )
 from jev_agent.models import ChoiceResult
 
@@ -29,6 +29,21 @@ class BoundedPagingTests(unittest.TestCase):
         self.assertEqual(trace['submitted_choice_peak'], 8)
         self.assertLessEqual(trace['resident_peak'], 2)
         self.assertEqual(len(trace['calls']), 4)
+
+    def test_lexical_directory_ranking_uses_only_page_summaries(self):
+        request = RuntimeRequest(self.pages['p11']['tools'][1]['query'])
+        ranked = rank_directory_pages(request.query, self.pages, mode='lexical')
+        self.assertEqual(ranked[0], 'p11')
+        chooser = ScriptedChooser(['PAGE:p11', 'p11:op1'])
+        trace = run_episode(chooser, request, self.pages, directory_ranking='lexical')
+        self.assertEqual(trace['selected_tool'], 'p11:op1')
+        self.assertEqual(trace['directory_ranking'], 'lexical')
+
+    def test_directory_state_exposes_remaining_window_budget(self):
+        request = RuntimeRequest('browse')
+        chooser = ScriptedChooser(['NEXT', 'STOP'])
+        run_episode(chooser, request, self.pages)
+        self.assertIn('remaining windows', chooser.calls[0][0])
 
     def test_wrong_page_is_materialized_without_gold_filter(self):
         request = RuntimeRequest(self.pages['p11']['tools'][0]['query'])
