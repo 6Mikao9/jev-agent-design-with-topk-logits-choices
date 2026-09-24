@@ -9,6 +9,7 @@ from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
 from .memory import DependencyIndex, MemoryBank, MemoryRecord
 from .memory_selection import MemorySelectionResult, TwoStageMemorySelector
 from .memory_recovery import EvidenceRecoveryResult, RawEvidenceFallback
+from .grounded import GroundedArgumentAgent, GroundedResult
 from .models import Candidate, ChoiceOption, ChoiceResult, TaskState
 from .option_space import OptionSpace, OptionSpaceRegistry, SpaceOption
 from .parameter_prior import ParameterCandidate, ParameterPrior, ParameterRecord
@@ -63,6 +64,8 @@ __all__ = [
     "TwoStageMemorySelector",
     "EvidenceRecoveryResult",
     "RawEvidenceFallback",
+    "GroundedArgumentAgent",
+    "GroundedResult",
     "MemoryPage",
     "MemoryReadBudgetExceeded",
     "PageCandidate",
