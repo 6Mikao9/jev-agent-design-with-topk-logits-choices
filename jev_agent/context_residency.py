@@ -107,6 +107,24 @@ class ContextResidencyManager:
             self._working = [item for item in self._working if item != block.block_id]
         self._blocks[block.block_id] = ContextBlock(**vars(block))
 
+    def refresh(
+        self,
+        query: str,
+        *,
+        updates: Iterable[ContextBlock] = (),
+        phase: str | None = None,
+    ) -> tuple[ContextBlock, ...]:
+        """Apply event updates and rebuild the working context in one step.
+
+        A refresh is intentionally explicit: callers may replace a block with
+        a newer revision and immediately derive a new resident set.  It does
+        not assume any cross-request prefix/KV reuse; each decision observes
+        the current resident set and stable block IDs.
+        """
+        for block in updates:
+            self.register(block)
+        return self.rebuild(query, phase=phase, advance_step=True)
+
     def blocks(self) -> tuple[ContextBlock, ...]:
         return tuple(ContextBlock(**vars(block)) for block in self._blocks.values())
 
