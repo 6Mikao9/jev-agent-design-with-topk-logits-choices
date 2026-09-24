@@ -61,9 +61,10 @@ class SummaryChooser:
         return ChoiceResult(chosen.option_id, probs, 1.0, "summary-replay")
 
 
-def _content(*, needle: str, position: str, date: str, approved: str) -> str:
+def _content(*, needle: str, position: str, date: str, approved: str,
+             source: str = "primary-record") -> str:
     filler = [f"noise-{i}: unrelated event record" for i in range(12)]
-    evidence = f"NEEDLE_FACT {needle}: date={date}; approved={approved}; source=primary-record"
+    evidence = f"NEEDLE_FACT {needle}: date={date}; approved={approved}; source={source}"
     if position == "head":
         lines = [evidence, *filler]
     elif position == "tail":
@@ -90,7 +91,8 @@ def make_episode(position: str, omission: str, state_name: str, index: PagedMemo
     if state_name == "conflict":
         contradiction = f"conflict-{token}"
         index.upsert(MemoryPage(contradiction, f"project atlas deployment {token} historical conflict",
-                                _content(needle=token, position="middle", date="2026-10-13", approved="no")))
+                                _content(needle=token, position="middle", date="2026-10-13", approved="no",
+                                         source="historical-record")))
         query += " compare conflict"
     distractors = 2 if state_name != "distractor" else 10
     for i in range(distractors):

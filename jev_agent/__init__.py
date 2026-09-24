@@ -8,6 +8,7 @@ from .diffusion import DiffusionCandidate, ParallelCandidateGenerator
 from .fast_logits import FastLogitsHelper, FastLogitsState, FastToken
 from .memory import DependencyIndex, MemoryBank, MemoryRecord
 from .memory_selection import MemorySelectionResult, TwoStageMemorySelector
+from .memory_recovery import EvidenceRecoveryResult, RawEvidenceFallback
 from .models import Candidate, ChoiceOption, ChoiceResult, TaskState
 from .option_space import OptionSpace, OptionSpaceRegistry, SpaceOption
 from .parameter_prior import ParameterCandidate, ParameterPrior, ParameterRecord
@@ -60,6 +61,8 @@ __all__ = [
     "MemoryRecord",
     "MemorySelectionResult",
     "TwoStageMemorySelector",
+    "EvidenceRecoveryResult",
+    "RawEvidenceFallback",
     "MemoryPage",
     "MemoryReadBudgetExceeded",
     "PageCandidate",

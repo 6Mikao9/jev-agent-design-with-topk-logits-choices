@@ -122,6 +122,50 @@ class PagedMemoryIndex:
             for score, page in scored[:limit]
         ]
 
+    def search_content(
+        self,
+        context: str,
+        *,
+        required_markers: Iterable[str] = (),
+        limit: int = 16,
+        max_scan_bytes: int = 65_536,
+        allow_sensitive: bool = False,
+    ) -> list[PageCandidate]:
+        """Bounded raw-evidence fallback used after a summary gap is detected.
+
+        This deliberately runs outside Jev's page-table choice.  It is a
+        retrieval/index operation: content is scanned under a byte budget and
+        only stable page metadata is returned for a subsequent guarded read.
+        ``required_markers`` is an evidence contract supplied by the caller
+        (for example a source or schema marker), never a hidden target label.
+        Stale and sensitive pages remain excluded.
+        """
+        if limit < 1 or max_scan_bytes < 1:
+            raise ValueError("limit and max_scan_bytes must be positive")
+        query = _terms(context)
+        markers = tuple(marker.casefold() for marker in required_markers if marker)
+        scanned = 0
+        scored: list[tuple[float, MemoryPage]] = []
+        for page in self._pages.values():
+            if page.stale or (page.sensitive and not allow_sensitive):
+                continue
+            size = len(page.content.encode("utf-8"))
+            if scanned + size > max_scan_bytes:
+                break
+            scanned += size
+            content_folded = page.content.casefold()
+            marker_hits = sum(1 for marker in markers if marker in content_folded)
+            overlap = len(query & _terms(page.content))
+            if marker_hits or overlap:
+                # Marker hits express the caller's evidence contract and are
+                # intentionally dominant; lexical overlap breaks ties.
+                scored.append((marker_hits * 100.0 + float(overlap), page))
+        scored.sort(key=lambda item: (-item[0], item[1].page_id))
+        return [
+            PageCandidate(page.page_id, page.summary, score, page.revision, page.parent_id, tuple(page.tags))
+            for score, page in scored[:limit]
+        ]
+
     def read_selected(
         self,
         page_ids: Iterable[str],
