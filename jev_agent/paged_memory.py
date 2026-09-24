@@ -122,7 +122,10 @@ class PagedMemoryIndex:
             # normal pages to the same value (the old ``min(ts / 1e12, 1e-6)``
             # formula had exactly that bug).
             age = max(0.0, now - page.last_accessed)
-            score += 1e-6 * math.exp(-age / self.recency_half_life_seconds)
+            # 1e-3 is still three orders of magnitude below one lexical hit,
+            # but is large enough to survive timestamp resolution and float
+            # rounding when two pages are inserted in the same turn.
+            score += 1e-3 * math.exp(-age / self.recency_half_life_seconds)
             if overlap or not query:
                 scored.append((score, page))
         scored.sort(key=lambda item: (-item[0], item[1].page_id))
