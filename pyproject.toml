@@ -9,6 +9,9 @@ description = "A small Jev tool-agent prototype with explicit Top-k logits fallb
 requires-python = ">=3.10"
 dependencies = []
 
+[project.scripts]
+jev-agent = "jev_agent.cli:main"
+
 [project.optional-dependencies]
 models = ["torch", "transformers"]
 dev = ["ruff"]
