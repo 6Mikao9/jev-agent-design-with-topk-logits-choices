@@ -202,5 +202,7 @@ masked diffusion 的直接 proposal 质量负结果可以保留在 appendix 或�
 - **第18轮：255-entry Option Space 页预算。** 新增 `OptionPageBudget`，把 255 定义为 Jev Choice 的目录页/线协议上限，实际调用默认 16 个动作候选并预留 6 个 `PAGE/REFINE/CLARIFY/REVIEW/STOP/NONE` 控制项；40 个候选切分为 `[16,16,8]`，总数始终不超过 255。本地和远端 bundled Python **141 项测试通过**、3 项可选依赖跳过。新增 `ContextBudget.jev_wide()` 的 48 KiB UTF-8 字节宽配置，24 KiB 继续作为窄基线。报告为 `docs/reports/2026-09-24-option-page-budget.zh-CN.md`。TypeSafe 当前文档给出 Jev 1.13 每请求 64k tokens、`state`+最长问题 32k tokens；本项目 24/48 KiB 与 2048-token 本地服务参数都是保守工程预算。下一步用真实 Jev 对照 8/16/32/64 decision batch 和 24/48 KiB context，记录质量、控制项误选和延迟。
 - **第19轮：预算离线容量对照。** `benchmarks/benchmark_budget_ablation.py` 固定 255 个逻辑候选和末尾 evidence needle，对照 24/48 KiB Context 与 8/16/32/64 action batch。48 KiB 合成配置只丢 1 个 slice 并保住 needle，24 KiB 丢 43 个且漏掉 needle；255 候选分别需要 32/16/8/4 批次。报告为 `docs/reports/2026-09-24-budget-ablation.zh-CN.md`，结果是 proxy 容量信号，不是 Jev 质量结论。下一步接受控真实 Jev workload，测批次质量和延迟。
 
+- **第2轮：24 步状态依赖恢复基线。** 新增 `benchmarks/benchmark_stateful_recovery_workload.py`：隐藏 quota/used/version 状态、一次合法但过期的工具读数、revision 失效和源事实刷新，resident 上限为 3。结果为 1 次矛盾检测、3 条历史失效、2 次恢复成功、0 外部副作用；远端完整测试 148/148。相对预期：比最低预期好，证明 revision/invalidation 安全边界；但这是确定性离线控制器，不是 Jev 选择质量，也没有让重建 context 驱动后续决策。报告为 `docs/reports/2026-09-24-stateful-recovery-workload.zh-CN.md`。早先直接接 `DecisionRuntime` 的尝试因恢复模型反复选择 `PAGE:recovery` 而 0 次提交，已删除并记录为下一轮 runtime 有界 recovery 状态的修复目标。
+
 
 

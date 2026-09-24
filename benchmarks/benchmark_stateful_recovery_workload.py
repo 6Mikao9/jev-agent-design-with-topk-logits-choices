@@ -54,9 +54,13 @@ def run_workload(*, steps: int = 24) -> dict:
     records: list[dict] = []
     invalidated = recovered = contradictions = 0
 
+    observation_seq = 0
+
     def add_memory(version: int, quota: int) -> None:
+        nonlocal observation_seq
+        observation_seq += 1
         memory.add(MemoryRecord(
-            f"quota-v{version}", f"quota is {quota}", "observation",
+            f"quota-v{version}-obs{observation_seq}", f"quota is {quota}", "observation",
             {"quota": version}, impact_tags=frozenset({"quota", "reservation"}),
         ))
 
