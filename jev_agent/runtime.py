@@ -9,7 +9,7 @@ learned governor remain separate experiments.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Literal, Mapping, Sequence
 
 from .context_residency import ContextBlock, ContextFault, ContextResidencyManager
 from .decision_model import DecisionModel, DecisionRequest
@@ -62,6 +62,32 @@ class ExecutionVerdict:
 
 
 @dataclass(frozen=True)
+class ExecutionReceipt:
+    """Executor's account of an attempted side effect.
+
+    ``unknown`` means the operation may have happened. The runtime must not
+    select or execute another option for that task until external state has
+    been reconciled. Keys and environment versions are supplied by the tool;
+    the runtime cannot invent an effective idempotency guarantee for it.
+    """
+
+    status: Literal["applied", "rejected", "unknown"]
+    result: Any = None
+    reason: str = ""
+    idempotency_key: str | None = None
+    environment_version_before: str | int | None = None
+    environment_version_after: str | int | None = None
+
+    def __post_init__(self) -> None:
+        if self.status not in {"applied", "rejected", "unknown"}:
+            raise ValueError("execution receipt status must be applied, rejected, or unknown")
+        if self.status != "applied" and not self.reason:
+            raise ValueError("a rejected or unknown execution requires a reason")
+        if self.idempotency_key is not None and not self.idempotency_key.strip():
+            raise ValueError("idempotency key must be non-empty when supplied")
+
+
+@dataclass(frozen=True)
 class RuntimeStepResult:
     step: int
     status: str
@@ -76,6 +102,7 @@ class RuntimeStepResult:
     invalidated_memory_ids: tuple[str, ...] = ()
     invalidated_context_ids: tuple[str, ...] = ()
     revised_dependencies: tuple[str, ...] = ()
+    execution_receipt: ExecutionReceipt | None = None
 
 
 class DecisionRuntime:
@@ -104,7 +131,35 @@ class DecisionRuntime:
         self.max_options = max_options
         self.max_page_attempts = max_page_attempts
         self._page_attempts: dict[tuple[str, int, str, int], int] = {}
+        self._pending_execution: dict[str, tuple[str, int, ExecutionReceipt]] = {}
         self._step = 0
+
+    def pending_execution(self, task_id: str) -> ExecutionReceipt | None:
+        """Return an unresolved execution outcome for a task, if present."""
+        pending = self._pending_execution.get(task_id)
+        return pending[2] if pending is not None else None
+
+    def acknowledge_reconciliation(self, *, task: TaskState, receipt: ExecutionReceipt) -> None:
+        """Unblock a task after the caller reconciles the external state.
+
+        The caller must revise the task to record the observed outcome and
+        invalidate any affected dependencies before acknowledging. This
+        method does not repeat an uncertain side effect or infer its result.
+        """
+        pending = self._pending_execution.get(task.task_id)
+        if pending is None:
+            raise ValueError("task has no pending execution")
+        choice, revision, original = pending
+        if receipt.status == "unknown":
+            raise ValueError("reconciliation must establish applied or rejected")
+        if original.idempotency_key is not None and receipt.idempotency_key != original.idempotency_key:
+            raise ValueError("reconciliation idempotency key does not match")
+        if task.revision <= revision:
+            raise ValueError("revise task state with the observed outcome before acknowledging")
+        del self._pending_execution[task.task_id]
+        self.trace.record(source="runtime", target="EXECUTION_RECONCILED",
+                          label=choice, success=True,
+                          guard=f"task_revision > {revision}")
 
     @staticmethod
     def _state_text(task: TaskState, contexts: Sequence[ContextBlock]) -> str:
@@ -180,6 +235,14 @@ class DecisionRuntime:
         memory/context.  Rejected executions are never retried implicitly.
         """
         self._step += 1
+        pending = self._pending_execution.get(task.task_id)
+        if pending is not None:
+            choice, _, receipt = pending
+            return RuntimeStepResult(
+                self._step, "needs_reconciliation", choice, option_id=choice,
+                faults=("ExecutionUnknown",), reason=receipt.reason,
+                execution_receipt=receipt,
+            )
         contexts: tuple[ContextBlock, ...] = ()
         if self.context_manager is not None:
             contexts = self.context_manager.refresh(
@@ -262,7 +325,43 @@ class DecisionRuntime:
                     f"task revision changed during decision: expected {request_revision}, got {task.revision}"
                 )
             selected = self.option_manager.resolve(choice)
-            tool_result = execute(selected) if execute is not None else None
+            receipt: ExecutionReceipt | None = None
+            if execute is not None:
+                try:
+                    raw_result = execute(selected)
+                except Exception as error:
+                    # An exception does not prove that a remote side effect
+                    # failed. Do not retry or re-decide until reconciled.
+                    receipt = ExecutionReceipt("unknown", reason=f"executor raised {type(error).__name__}")
+                    raw_result = None
+                if isinstance(raw_result, ExecutionReceipt):
+                    receipt = raw_result
+                    tool_result = receipt.result
+                else:
+                    tool_result = raw_result
+                if receipt is not None and receipt.status == "unknown":
+                    self._pending_execution[task.task_id] = (choice, task.revision, receipt)
+                    self.trace.record(source="runtime", target="EXECUTION_UNKNOWN",
+                                      label=choice, success=False, error=receipt.reason)
+                    return RuntimeStepResult(
+                        self._step, "needs_reconciliation", choice, decision,
+                        option_id=choice, context_ids=context_ids,
+                        resident_option_ids=resident_ids,
+                        faults=("ExecutionUnknown",), tool_result=tool_result,
+                        reason=receipt.reason, execution_receipt=receipt,
+                    )
+                if receipt is not None and receipt.status == "rejected":
+                    self.trace.record(source="runtime", target="EXECUTION_REJECTED",
+                                      label=choice, success=False, error=receipt.reason)
+                    return RuntimeStepResult(
+                        self._step, "execution_rejected", choice, decision,
+                        option_id=choice, context_ids=context_ids,
+                        resident_option_ids=resident_ids,
+                        faults=("ExecutionRejected",), tool_result=tool_result,
+                        reason=receipt.reason, execution_receipt=receipt,
+                    )
+            else:
+                tool_result = None
             invalidated_memory_ids: tuple[str, ...] = ()
             invalidated_context_ids: tuple[str, ...] = ()
             revised_dependencies: tuple[str, ...] = ()
@@ -279,7 +378,7 @@ class DecisionRuntime:
                                              option_id=choice, context_ids=context_ids,
                                              resident_option_ids=resident_ids,
                                              faults=(type(error).__name__,), tool_result=tool_result,
-                                             reason=reason)
+                                             reason=reason, execution_receipt=receipt)
                 revised_dependencies = tuple(dict.fromkeys(verdict.changed_dependencies))
                 for index, dependency_id in enumerate(revised_dependencies):
                     task.revise(dependency_id, verdict.observation if index == 0 else None)
@@ -307,6 +406,7 @@ class DecisionRuntime:
                         invalidated_memory_ids=invalidated_memory_ids,
                         invalidated_context_ids=invalidated_context_ids,
                         revised_dependencies=revised_dependencies,
+                        execution_receipt=receipt,
                     )
             status = "executed" if execute is not None else "committed"
             self.trace.record(source="runtime", target=status, label=choice, success=True)
@@ -315,7 +415,8 @@ class DecisionRuntime:
                                      resident_option_ids=resident_ids, tool_result=tool_result,
                                      invalidated_memory_ids=invalidated_memory_ids,
                                      invalidated_context_ids=invalidated_context_ids,
-                                     revised_dependencies=revised_dependencies)
+                                     revised_dependencies=revised_dependencies,
+                                     execution_receipt=receipt)
         except (OptionFault, RefineFault, StaleVirtualOption, ContextFault) as error:
             reason = str(error)
             self.trace.record(source="runtime", target="FAULT", label=choice,

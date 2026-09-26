@@ -4,7 +4,7 @@ from jev_agent.context_residency import ContextBlock, ContextResidencyManager
 from jev_agent.decision_model import OracleDecisionModel, ReplayDecisionModel
 from jev_agent.memory import MemoryBank, MemoryRecord
 from jev_agent.models import ChoiceResult, TaskState
-from jev_agent.runtime import DecisionRuntime, ExecutionVerdict
+from jev_agent.runtime import DecisionRuntime, ExecutionReceipt, ExecutionVerdict
 from jev_agent.virtual_option import VirtualOption, VirtualOptionManager
 
 
@@ -136,6 +136,54 @@ class DecisionRuntimeTests(unittest.TestCase):
                               execute=execute, validate_execution=validate)
         self.assertEqual(second.status, "executed")
         self.assertEqual(calls, ["read", "refresh"])
+
+    def test_unknown_execution_is_pending_and_never_retried_implicitly(self):
+        manager = VirtualOptionManager(max_resident=1)
+        manager.register_page("tools", [VirtualOption("write", "write file", page_id="tools")])
+        manager.page_in("tools")
+        model = OracleDecisionModel(lambda request: "write")
+        runtime = DecisionRuntime(model, option_manager=manager)
+        task = TaskState("t", "write file")
+        calls = []
+
+        def execute(option):
+            calls.append(option.option_id)
+            return ExecutionReceipt("unknown", reason="transport timeout", idempotency_key="op-1")
+
+        first = runtime.step(task=task, instructions="choose", execute=execute)
+        second = runtime.step(task=task, instructions="choose", execute=execute)
+        self.assertEqual(first.status, "needs_reconciliation")
+        self.assertEqual(second.status, "needs_reconciliation")
+        self.assertEqual(calls, ["write"])
+        self.assertEqual(runtime.pending_execution(task.task_id).idempotency_key, "op-1")
+
+        with self.assertRaises(ValueError):
+            runtime.acknowledge_reconciliation(task=task, receipt=ExecutionReceipt(
+                "applied", result={"ok": True}, idempotency_key="op-1"
+            ))
+        task.revise("file", "external reconciliation confirms write")
+        runtime.acknowledge_reconciliation(
+            task=task,
+            receipt=ExecutionReceipt("applied", result={"ok": True}, idempotency_key="op-1"),
+        )
+        self.assertIsNone(runtime.pending_execution(task.task_id))
+
+    def test_executor_exception_becomes_unknown_without_retry(self):
+        manager = VirtualOptionManager(max_resident=1)
+        manager.register_page("tools", [VirtualOption("write", "write file", page_id="tools")])
+        manager.page_in("tools")
+        runtime = DecisionRuntime(OracleDecisionModel(lambda request: "write"), option_manager=manager)
+        task = TaskState("t", "write file")
+        calls = []
+
+        def execute(option):
+            calls.append(option.option_id)
+            raise TimeoutError("remote timeout")
+
+        result = runtime.step(task=task, instructions="choose", execute=execute)
+        self.assertEqual(result.status, "needs_reconciliation")
+        self.assertEqual(result.execution_receipt.status, "unknown")
+        self.assertEqual(calls, ["write"])
 
 
 if __name__ == "__main__":
